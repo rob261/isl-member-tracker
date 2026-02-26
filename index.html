@@ -530,9 +530,12 @@ I agree" oninput="livePreview()"></textarea>
 
 <script>
 // ── Config & State ────────────────────────────────────────────────────
-const SHEET_TAB   = 'Sheet1';
-const SHEET_RANGE = `${SHEET_TAB}!A:I`;
-const HEADERS     = ['ID','Name','Date','ISL Member?','Work Email','Will Contribute?','Agreed to Rules?','Status','Notes'];
+const SHEET_TAB      = 'Sheet1';
+const SHEET_RANGE    = `${SHEET_TAB}!A:I`;
+const HEADERS        = ['ID','Name','Date','ISL Member?','Work Email','Will Contribute?','Agreed to Rules?','Status','Notes'];
+const ARCHIVE_TAB    = 'Sheet2';
+const ARCHIVE_RANGE  = `${ARCHIVE_TAB}!A:J`;
+const ARCHIVE_HEADERS = [...HEADERS, 'Archived Date'];
 const STATUSES    = ['New Lead','Contacted','Qualified','Not Interested','Approved','Denied'];
 const STATUS_CLS  = { 'New Lead':'bg-blue','Contacted':'bg-yellow','Qualified':'bg-green','Not Interested':'bg-gray','Approved':'bg-purple','Denied':'bg-red' };
 const QUESTIONS   = [
@@ -670,6 +673,35 @@ async function apiUpdate(rowNum, values) {
       method: 'PUT',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ values: [values] })
+    }
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiArchiveMember(m) {
+  // Check if Sheet2 has headers yet — if empty, write them first
+  try {
+    const check = await apiGet(ARCHIVE_RANGE);
+    if (!check.values || check.values.length === 0) {
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(ARCHIVE_RANGE)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [ARCHIVE_HEADERS] })
+        }
+      );
+    }
+  } catch(e) { /* Sheet2 may not exist yet — append will create it */ }
+
+  const archivedDate = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(ARCHIVE_RANGE)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [[...memberToRow(m), archivedDate]] })
     }
   );
   if (!r.ok) throw new Error(await r.text());
@@ -855,13 +887,14 @@ async function deleteMember(id) {
   if (accessToken && rowNum) {
     setSyncStatus('syncing');
     try {
-      await apiDeleteRow(rowNum);
-      await loadFromSheet(); // reload to keep row numbers accurate
-    } catch(e) { setSyncStatus('error'); showToast('Delete sync error: ' + e.message, 'err'); }
+      await apiArchiveMember(m);   // copy to Sheet2 first
+      await apiDeleteRow(rowNum);  // then remove from Sheet1
+      await loadFromSheet();       // reload to keep row numbers accurate
+    } catch(e) { setSyncStatus('error'); showToast('Archive/delete error: ' + e.message, 'err'); }
   } else {
     renderAll();
   }
-  showToast(`${m.name} removed`);
+  showToast(`${m.name} removed from tracker & archived to Sheet2`);
 }
 
 // ── Filtering ─────────────────────────────────────────────────────────
