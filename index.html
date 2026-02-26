@@ -490,7 +490,11 @@ const QUESTIONS   = [
   { key:'agreedRules',    match:'agree to the group rules' },
 ];
 
-let settings    = JSON.parse(localStorage.getItem('isl_settings') || '{}');
+const DEFAULT_SETTINGS = {
+  clientId: '1038199509852-let2a3mhpl464lqs4use2dij9v39qt6t.apps.googleusercontent.com',
+  sheetId:  '1D4RmX_Ph2-aNmzkrKwmuKluH4KmSifCq7x5FH-Xp0g8',
+};
+let settings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('isl_settings') || '{}') };
 let members     = JSON.parse(localStorage.getItem('isl_tracker')  || '[]');
 let rowMap      = {}; // memberId → 1-based sheet row number
 let accessToken = null;
@@ -909,10 +913,9 @@ function showToast(msg, type) {
 // ── Boot ──────────────────────────────────────────────────────────────
 updateAuthUI();
 renderAll();
-// Show setup modal if no credentials configured yet
-if (!settings.clientId || !settings.sheetId) openSettings();
-// If credentials exist but GIS not loaded yet, wait for onGISLoad()
-// If credentials exist and GIS already loaded, init token client
+// Credentials are pre-configured — no setup modal needed
+// If GIS not loaded yet, onGISLoad() will call initTokenClient()
+// If GIS already loaded, init now
 if (settings.clientId && gisLoaded) initTokenClient();
 </script>
 </body>
