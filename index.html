@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISL Group Member Tracker</title>
+<script src="https://accounts.google.com/gsi/client" async onload="onGISLoad()"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --blue: #1877f2;
+  --blue-dk: #1258c0;
+  --bg: #f0f2f5;
+  --card: #fff;
+  --text: #1c1e21;
+  --muted: #65676b;
+  --border: #dddfe2;
+  --green: #137333;  --green-bg: #e6f4ea;
+  --yellow: #a37900; --yellow-bg: #fef7e0;
+  --red: #c5221f;    --red-bg: #fce8e6;
+  --purple: #6200ea; --purple-bg: #f3e8fd;
+  --gray: #5f6368;   --gray-bg: #f1f3f4;
+}
+
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── Header ── */
+.header {
+  background: var(--blue); color: white;
+  padding: 13px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  position: sticky; top: 0; z-index: 200;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-title h1 { font-size: 17px; font-weight: 700; }
+.header-title p  { font-size: 12px; opacity: .8; margin-top: 1px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.sync-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  background: rgba(255,255,255,.15);
+}
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; }
+.sync-dot.idle      { background: #69f0ae; }
+.sync-dot.syncing   { background: #ffd740; animation: pulse 1s infinite; }
+.sync-dot.error     { background: #ff5252; }
+.sync-dot.offline   { background: rgba(255,255,255,.4); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.btn-auth {
+  padding: 7px 16px; border-radius: 8px; border: none;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  background: rgba(255,255,255,.2); color: white;
+  transition: background .15s;
+}
+.btn-auth:hover { background: rgba(255,255,255,.3); }
+.btn-auth.sign-in { background: white; color: var(--blue); }
+.btn-auth.sign-in:hover { background: #e8f0fe; }
+
+.btn-settings {
+  background: none; border: none; cursor: pointer; color: white; opacity: .8;
+  display: flex; align-items: center; padding: 4px;
+  border-radius: 6px; transition: opacity .15s;
+}
+.btn-settings:hover { opacity: 1; background: rgba(255,255,255,.15); }
+
+/* ── Setup Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 500; padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: white; border-radius: 16px;
+  width: 100%; max-width: 580px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  overflow: hidden;
+}
+.modal-header {
+  background: var(--blue); color: white;
+  padding: 22px 28px;
+}
+.modal-header h2 { font-size: 18px; font-weight: 700; }
+.modal-header p  { font-size: 13px; opacity: .85; margin-top: 4px; }
+.modal-body { padding: 28px; }
+.modal-body .step {
+  display: flex; gap: 14px; margin-bottom: 22px;
+  padding-bottom: 22px; border-bottom: 1px solid var(--border);
+}
+.modal-body .step:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--blue); color: white;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+}
+.step-content h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.step-content p  { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.step-content code {
+  background: #f0f2f5; padding: 2px 7px; border-radius: 5px;
+  font-family: 'Courier New', monospace; font-size: 12px; color: var(--text);
+}
+.step-content pre {
+  background: #1e1e2e; color: #cdd6f4;
+  padding: 10px 14px; border-radius: 8px; margin-top: 8px;
+  font-size: 13px; font-family: 'Courier New', monospace;
+  overflow-x: auto;
+}
+.step-content a { color: var(--blue); text-decoration: none; }
+.step-content a:hover { text-decoration: underline; }
+.modal-inputs { padding: 0 28px 28px; border-top: 1px solid var(--border); }
+.modal-inputs h3 { font-size: 14px; font-weight: 700; margin: 20px 0 14px; }
+.mfg { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.mfg label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.mfg input { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 14px; outline: none; }
+.mfg input:focus { border-color: var(--blue); }
+.modal-footer { padding: 0 28px 28px; display: flex; gap: 10px; justify-content: flex-end; }
+.btn-save { background: var(--blue); color: white; }
+.btn-save:hover { background: var(--blue-dk); }
+.btn-skip { background: white; color: var(--muted); border: 1.5px solid var(--border); }
+.btn-skip:hover { background: var(--bg); }
+
+/* ── Layout ── */
+.container { max-width: 1440px; margin: 0 auto; padding: 22px; }
+
+/* ── Auth Banner ── */
+.auth-banner {
+  background: #fff8e1; border: 1.5px solid #ffe082;
+  border-radius: 10px; padding: 14px 18px;
+  margin-bottom: 18px;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13px;
+}
+.auth-banner.hidden { display: none; }
+.auth-banner .icon { font-size: 20px; }
+.auth-banner strong { font-weight: 700; }
+.auth-banner .btn-banner {
+  margin-left: auto; padding: 7px 16px;
+  background: var(--blue); color: white;
+  border: none; border-radius: 7px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+}
+
+/* ── Stats ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px; margin-bottom: 20px;
+}
+.stat-card {
+  background: white; border-radius: 10px;
+  padding: 16px; text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.stat-card .num { font-size: 28px; font-weight: 700; }
+.stat-card .lbl { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+/* ── Add Panel ── */
+.add-panel {
+  background: white; border-radius: 12px;
+  padding: 20px 22px; margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.panel-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
+.add-grid { display: grid; grid-template-columns: 210px 1fr auto; gap: 14px; align-items: start; }
+.fg { display: flex; flex-direction: column; gap: 6px; }
+.fg label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+input[type="text"], textarea, select {
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 9px 12px; font-size: 14px; font-family: inherit; outline: none;
+  transition: border-color .15s;
+}
+input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--blue); }
+textarea { resize: vertical; min-height: 128px; font-family: 'Courier New', monospace; font-size: 12.5px; line-height: 1.5; }
+.btn-col { display: flex; flex-direction: column; gap: 8px; padding-top: 19px; }
+.btn {
+  padding: 9px 16px; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: all .15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn-primary  { background: var(--blue); color: white; }
+.btn-primary:hover  { background: var(--blue-dk); }
+.btn-outline  { background: white; color: var(--text); border: 1.5px solid var(--border); }
+.btn-outline:hover  { background: var(--bg); }
+.btn-sm-danger { background: var(--red); color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; }
+.btn-sm-danger:hover { opacity: .85; }
+
+/* ── Preview ── */
+.preview-box {
+  margin-top: 12px; padding: 12px 16px;
+  background: #f8f9ff; border: 1.5px solid #c7d2ff;
+  border-radius: 8px; display: none;
+}
+.preview-box h4 { font-size: 11px; font-weight: 700; color: var(--blue); margin-bottom: 9px; text-transform: uppercase; letter-spacing: .4px; }
+.preview-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+.preview-row { display: flex; gap: 7px; font-size: 13px; }
+.pq { color: var(--muted); min-width: 130px; }
+.pa { font-weight: 600; }
+
+/* ── Filters ── */
+.filters {
+  background: white; border-radius: 10px;
+  padding: 12px 18px; margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.search-w { flex: 1; min-width: 180px; }
+.search-w input { width: 100%; }
+.filters select { height: 38px; min-width: 136px; }
+
+/* ── Table ── */
+.table-wrap { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); overflow: hidden; }
+.table-header {
+  padding: 13px 20px; display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.table-header h2 { font-size: 14px; font-weight: 700; }
+.scroll-x { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  background: #f8f9fa; padding: 10px 14px;
+  text-align: left; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+td { padding: 10px 14px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafbff; }
+.badge {
+  display: inline-block; padding: 3px 9px; border-radius: 12px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.bg-green  { background: var(--green-bg);  color: var(--green); }
+.bg-yellow { background: var(--yellow-bg); color: var(--yellow); }
+.bg-red    { background: var(--red-bg);    color: var(--red); }
+.bg-blue   { background: #e8f0fe;          color: #1967d2; }
+.bg-purple { background: var(--purple-bg); color: var(--purple); }
+.bg-gray   { background: var(--gray-bg);   color: var(--gray); }
+.status-sel { border: 1.5px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: white; min-width: 118px; }
+.notes-inp  { border: 1.5px solid var(--border); border-radius: 6px; padding: 5px 9px; font-size: 12px; width: 165px; }
+.notes-inp:focus { border-color: var(--blue); outline: none; }
+.empty { text-align: center; padding: 56px 20px; color: var(--muted); }
+.empty .icon { font-size: 42px; margin-bottom: 10px; }
+.empty p { font-size: 14px; }
+.toast {
+  position: fixed; bottom: 22px; right: 22px;
+  padding: 11px 18px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  color: white; box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  transform: translateY(80px); opacity: 0; transition: all .3s ease; z-index: 999;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+@media (max-width: 900px) {
+  .add-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(3, 1fr); }
+  .btn-col { flex-direction: row; padding-top: 0; }
+}
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="header">
+  <div class="header-left">
+    <svg width="28" height="28" viewBox="0 0 36 36" fill="white">
+      <path d="M18 3C9.716 3 3 9.716 3 18c0 7.31 5.155 13.418 12.046 14.818V22.535h-3.48v-4.07h3.48v-2.746c0-4.09 2.087-5.952 5.514-5.952 1.644 0 2.518.122 2.928.177v3.226h-2.346c-1.45 0-1.957.694-1.957 2.235v3.06h4.268l-.577 4.07h-3.691v10.337C27.718 31.564 33 25.4 33 18c0-8.284-6.716-15-15-15z"/>
+    </svg>
+    <div class="header-title">
+      <h1>Insurance Sales Lab</h1>
+      <p>Facebook Group Member Tracker</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="sync-pill" id="syncPill">
+      <div class="sync-dot offline" id="syncDot"></div>
+      <span id="syncLabel">Not connected</span>
+    </div>
+    <button class="btn-auth sign-in" id="btnSignIn" onclick="signIn()" style="display:none">
+      Sign in with Google
+    </button>
+    <button class="btn-auth" id="btnSignOut" onclick="signOut()" style="display:none">
+      Sign Out
+    </button>
+    <button class="btn-settings" onclick="openSettings()" title="Settings">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.08 7.08 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54a7.47 7.47 0 0 0-1.61.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.08.63-.08.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.36 1.04.67 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7.47 7.47 0 0 0 1.61-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- ── Setup / Settings Modal ── -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Connect to Google Sheets</h2>
+      <p id="modalSubtitle">One-time setup — takes about 5 minutes</p>
+    </div>
+    <div class="modal-body">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Start a local server (required for OAuth)</h3>
+          <p>Open <strong>Terminal</strong> and run this command:</p>
+          <pre>cd "/Users/robmcafee/Downloads/Claude Code" &amp;&amp; python3 -m http.server 8080</pre>
+          <p style="margin-top:8px">Then open <a href="http://localhost:8080/member-tracker.html" target="_blank"><strong>http://localhost:8080/member-tracker.html</strong></a></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Create a Google Cloud project &amp; get your Client ID</h3>
+          <p>
+            1. Go to <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a><br>
+            2. Create a new project (or select existing)<br>
+            3. Enable <strong>Google Sheets API</strong><br>
+            4. Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth 2.0 Client ID</strong><br>
+            5. Type: <strong>Web application</strong><br>
+            6. Authorized JS origins: <code>http://localhost:8080</code><br>
+            7. Copy your <strong>Client ID</strong>
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Create your Google Sheet</h3>
+          <p>
+            1. Create a new Google Sheet at <a href="https://sheets.new" target="_blank">sheets.new</a><br>
+            2. Leave the first tab named <strong>Sheet1</strong><br>
+            3. Copy the Sheet ID from the URL:<br>
+            <code>https://docs.google.com/spreadsheets/d/<strong>YOUR_SHEET_ID</strong>/edit</code>
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-inputs">
+      <h3>Enter your credentials</h3>
+      <div class="mfg">
+        <label>Google OAuth Client ID</label>
+        <input type="text" id="inputClientId" placeholder="123456789-abc.apps.googleusercontent.com" />
+      </div>
+      <div class="mfg">
+        <label>Google Sheet ID</label>
+        <input type="text" id="inputSheetId" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-skip" onclick="closeModal()">Use Offline (Local Only)</button>
+      <button class="btn btn-save btn-primary" onclick="saveSettings()">Save &amp; Connect</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Auth Banner -->
+  <div class="auth-banner hidden" id="authBanner">
+    <span class="icon">🔗</span>
+    <div>
+      <strong>Not signed in to Google.</strong>
+      Data is saved locally only. Sign in to sync with Google Sheets.
+    </div>
+    <button class="btn-banner" onclick="signIn()">Sign in with Google</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <!-- Add Panel -->
+  <div class="add-panel">
+    <div class="panel-title">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="var(--blue)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      Add New Member
+    </div>
+    <div class="add-grid">
+      <div class="fg">
+        <label>Member Name *</label>
+        <input type="text" id="memberName" placeholder="e.g. Robert Pico" />
+        <label style="margin-top:10px">Date Joined</label>
+        <input type="text" id="memberDate" placeholder="Defaults to today" />
+      </div>
+      <div class="fg">
+        <label>Paste Facebook Q&amp;A Answers *</label>
+        <textarea id="pasteArea"
+          placeholder="Paste the member's answers from Facebook:
+
+* Are you a member of Insurance Sales Lab?
+No, but I am interested
+* Please provide your WORK email for verification purposes
+email@example.com
+* Are you willing to CONTRIBUTE in this group, and not just be a CONSUMER?
+Yes
+Do you agree to the group rules from the admin?
+I agree" oninput="livePreview()"></textarea>
+      </div>
+      <div class="btn-col">
+        <button class="btn btn-primary" onclick="addMember()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Parse &amp; Add
+        </button>
+        <button class="btn btn-outline" onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+    <div class="preview-box" id="previewBox">
+      <h4>Parsed Preview</h4>
+      <div class="preview-grid" id="previewGrid"></div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="search-w">
+      <input type="text" id="searchInput" placeholder="Search by name or email…" oninput="renderTable()" />
+    </div>
+    <select id="fStatus" onchange="renderTable()">
+      <option value="">All Statuses</option>
+      <option>New Lead</option><option>Contacted</option><option>Qualified</option>
+      <option>Not Interested</option><option>Approved</option><option>Denied</option>
+    </select>
+    <select id="fISL" onchange="renderTable()">
+      <option value="">ISL Member: All</option>
+      <option value="yes">ISL Member: Yes</option>
+      <option value="interested">Interested in ISL</option>
+      <option value="no">Not a Member</option>
+    </select>
+    <select id="fContrib" onchange="renderTable()">
+      <option value="">Contribute: All</option>
+      <option value="yes">Will Contribute</option>
+      <option value="no">Will Not Contribute</option>
+    </select>
+    <button class="btn btn-outline" onclick="refreshFromSheet()" id="btnRefresh" title="Reload from Google Sheets">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      Refresh
+    </button>
+    <button class="btn btn-outline" onclick="exportCSV()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Export CSV
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="table-header">
+      <h2>Members &mdash; <span id="memberCount">0</span> shown <span id="totalCount" style="font-size:12px;color:var(--muted);font-weight:400"></span></h2>
+    </div>
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Name</th><th>Date</th>
+            <th>ISL Member?</th><th>Work Email</th>
+            <th>Will Contribute?</th><th>Agreed to Rules?</th>
+            <th>Status</th><th>Notes</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="empty" id="emptyState" style="display:none">
+        <div class="icon">👥</div>
+        <p>No members yet. Paste a member's answers above to get started.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config & State ────────────────────────────────────────────────────
+const SHEET_TAB   = 'Sheet1';
+const SHEET_RANGE = `${SHEET_TAB}!A:I`;
+const HEADERS     = ['ID','Name','Date','ISL Member?','Work Email','Will Contribute?','Agreed to Rules?','Status','Notes'];
+const STATUSES    = ['New Lead','Contacted','Qualified','Not Interested','Approved','Denied'];
+const STATUS_CLS  = { 'New Lead':'bg-blue','Contacted':'bg-yellow','Qualified':'bg-green','Not Interested':'bg-gray','Approved':'bg-purple','Denied':'bg-red' };
+const QUESTIONS   = [
+  { key:'islMember',      match:'member of insurance sales lab' },
+  { key:'email',          match:'work email' },
+  { key:'willContribute', match:'willing to contribute' },
+  { key:'agreedRules',    match:'agree to the group rules' },
+];
+
+let settings    = JSON.parse(localStorage.getItem('isl_settings') || '{}');
+let members     = JSON.parse(localStorage.getItem('isl_tracker')  || '[]');
+let rowMap      = {}; // memberId → 1-based sheet row number
+let accessToken = null;
+let tokenClient = null;
+let gisLoaded   = false;
+
+// ── GIS ───────────────────────────────────────────────────────────────
+function onGISLoad() {
+  gisLoaded = true;
+  if (settings.clientId) initTokenClient();
+}
+
+function initTokenClient() {
+  if (!window.google || !settings.clientId) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: settings.clientId,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: handleToken,
+  });
+}
+
+function handleToken(resp) {
+  if (resp.error) { showToast('Auth error: ' + resp.error, 'err'); return; }
+  accessToken = resp.access_token;
+  // Token expires in ~1 hour — clear it so UI prompts re-auth
+  setTimeout(() => { accessToken = null; updateAuthUI(); }, (resp.expires_in - 60) * 1000);
+  updateAuthUI();
+  loadFromSheet();
+}
+
+function signIn() {
+  if (!settings.clientId || !settings.sheetId) { openSettings(); return; }
+  if (!gisLoaded) { showToast('Google auth library still loading, try again in a second', 'err'); return; }
+  if (!tokenClient) initTokenClient();
+  tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'select_account' });
+}
+
+function signOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken);
+  accessToken = null;
+  updateAuthUI();
+  showToast('Signed out');
+}
+
+// ── Auth UI ───────────────────────────────────────────────────────────
+function updateAuthUI() {
+  const connected = !!accessToken;
+  document.getElementById('btnSignIn').style.display  = connected ? 'none' : 'inline-flex';
+  document.getElementById('btnSignOut').style.display = connected ? 'inline-flex' : 'none';
+  document.getElementById('authBanner').classList.toggle('hidden', connected || !settings.clientId);
+  setSyncStatus(connected ? 'idle' : 'offline');
+}
+
+function setSyncStatus(state, label) {
+  const dot  = document.getElementById('syncDot');
+  const lbl  = document.getElementById('syncLabel');
+  dot.className = 'sync-dot ' + state;
+  const labels = { idle:'Synced', syncing:'Syncing…', error:'Sync error', offline:'Offline (local only)' };
+  lbl.textContent = label || labels[state] || state;
+}
+
+// ── Settings Modal ────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('inputClientId').value = settings.clientId || '';
+  document.getElementById('inputSheetId').value  = settings.sheetId  || '';
+  document.getElementById('modalTitle').textContent    = settings.clientId ? 'Settings' : 'Connect to Google Sheets';
+  document.getElementById('modalSubtitle').textContent = settings.clientId ? 'Update your credentials' : 'One-time setup — takes about 5 minutes';
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+function saveSettings() {
+  const cid = document.getElementById('inputClientId').value.trim();
+  const sid = document.getElementById('inputSheetId').value.trim();
+  if (!cid || !sid) { showToast('Please fill in both fields', 'err'); return; }
+  settings = { clientId: cid, sheetId: sid };
+  localStorage.setItem('isl_settings', JSON.stringify(settings));
+  closeModal();
+  initTokenClient();
+  updateAuthUI();
+  showToast('Settings saved — click "Sign in with Google"');
+}
+
+// ── Sheets API helpers ────────────────────────────────────────────────
+async function apiGet(range) {
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(range)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (r.status === 401) { accessToken = null; updateAuthUI(); throw new Error('Session expired — please sign in again'); }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiAppend(values) {
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(SHEET_RANGE)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [values] })
+    }
+  );
+  if (r.status === 401) { accessToken = null; updateAuthUI(); throw new Error('Session expired'); }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiUpdate(rowNum, values) {
+  const range = `${SHEET_TAB}!A${rowNum}:I${rowNum}`;
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [values] })
+    }
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiDeleteRow(rowNum) {
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{ deleteDimension: { range: { sheetId: 0, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum } } }]
+      })
+    }
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── Load from Sheet ───────────────────────────────────────────────────
+async function loadFromSheet() {
+  if (!accessToken) return;
+  setSyncStatus('syncing');
+  try {
+    const data = await apiGet(SHEET_RANGE);
+    const rows = data.values || [];
+    // If sheet is empty, write headers
+    if (rows.length === 0) {
+      await apiAppend(HEADERS);
+      members = []; rowMap = {};
+    } else {
+      members = []; rowMap = {};
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r[0]) continue;
+        const m = {
+          id:            parseInt(r[0]) || (Date.now() + i),
+          name:          r[1] || '',
+          date:          r[2] || '',
+          islMember:     r[3] || '',
+          email:         r[4] || '',
+          willContribute:r[5] || '',
+          agreedRules:   r[6] || '',
+          status:        r[7] || 'New Lead',
+          notes:         r[8] || '',
+        };
+        members.push(m);
+        rowMap[m.id] = i + 1; // row 1 = header, so member row = i+1
+      }
+    }
+    localStorage.setItem('isl_tracker', JSON.stringify(members));
+    setSyncStatus('idle');
+    renderAll();
+  } catch (e) {
+    setSyncStatus('error');
+    showToast(e.message, 'err');
+  }
+}
+
+async function refreshFromSheet() {
+  if (!accessToken) { showToast('Sign in first to refresh from Google Sheets', 'err'); return; }
+  await loadFromSheet();
+  showToast('Refreshed from Google Sheets');
+}
+
+// ── Parsing ───────────────────────────────────────────────────────────
+function parsePaste(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const result = {};
+  for (let i = 0; i < lines.length; i++) {
+    const clean = lines[i].replace(/^\*\s*/, '').toLowerCase();
+    for (const q of QUESTIONS) {
+      if (clean.includes(q.match) && i + 1 < lines.length) {
+        result[q.key] = lines[i + 1];
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+function livePreview() {
+  const box  = document.getElementById('previewBox');
+  const grid = document.getElementById('previewGrid');
+  const text = document.getElementById('pasteArea').value;
+  if (!text.trim()) { box.style.display = 'none'; return; }
+  const p = parsePaste(text);
+  if (!Object.values(p).some(Boolean)) { box.style.display = 'none'; return; }
+  const labels = { islMember:'ISL Member?', email:'Work Email', willContribute:'Will Contribute?', agreedRules:'Agreed to Rules?' };
+  grid.innerHTML = Object.entries(labels).map(([k,l]) => `
+    <div class="preview-row">
+      <span class="pq">${l}</span>
+      <span class="pa" style="color:${p[k]?'var(--green)':'var(--muted)'}">${p[k]||'—'}</span>
+    </div>`).join('');
+  box.style.display = 'block';
+}
+
+// ── Add Member ────────────────────────────────────────────────────────
+async function addMember() {
+  const name  = document.getElementById('memberName').value.trim();
+  const paste = document.getElementById('pasteArea').value.trim();
+  const date  = document.getElementById('memberDate').value.trim() || todayStr();
+
+  if (!name)  { showToast('Please enter the member name', 'err'); return; }
+  if (!paste) { showToast('Please paste the Q&A answers', 'err'); return; }
+
+  const parsed = parsePaste(paste);
+  if (!Object.values(parsed).some(Boolean)) {
+    showToast('Could not parse any answers — check the pasted format', 'err'); return;
+  }
+
+  const member = { id: Date.now(), name, date, status: 'New Lead', notes: '',
+    islMember: parsed.islMember||'', email: parsed.email||'',
+    willContribute: parsed.willContribute||'', agreedRules: parsed.agreedRules||'' };
+
+  if (!accessToken) {
+    // Offline — local only
+    members.unshift(member);
+    localStorage.setItem('isl_tracker', JSON.stringify(members));
+    renderAll(); clearForm();
+    showToast(`✓ ${name} added (offline — sign in to sync)`);
+    return;
+  }
+
+  setSyncStatus('syncing');
+  try {
+    const resp = await apiAppend(memberToRow(member));
+    // Extract the row number assigned by Sheets
+    const match = (resp.updates?.updatedRange || '').match(/!A(\d+)/);
+    if (match) rowMap[member.id] = parseInt(match[1]);
+    members.unshift(member);
+    localStorage.setItem('isl_tracker', JSON.stringify(members));
+    setSyncStatus('idle');
+    renderAll(); clearForm();
+    showToast(`✓ ${name} added to Google Sheets`);
+  } catch (e) {
+    setSyncStatus('error');
+    showToast('Error saving: ' + e.message, 'err');
+  }
+}
+
+function memberToRow(m) {
+  return [String(m.id), m.name, m.date, m.islMember||'', m.email||'', m.willContribute||'', m.agreedRules||'', m.status, m.notes||''];
+}
+
+// ── Update Status ─────────────────────────────────────────────────────
+async function updateStatus(id, val) {
+  const m = members.find(x => x.id === id); if (!m) return;
+  m.status = val;
+  localStorage.setItem('isl_tracker', JSON.stringify(members));
+  renderTable(); updateStats();
+  if (!accessToken || !rowMap[id]) return;
+  try {
+    setSyncStatus('syncing');
+    await apiUpdate(rowMap[id], memberToRow(m));
+    setSyncStatus('idle');
+  } catch(e) { setSyncStatus('error'); showToast('Sync error: ' + e.message, 'err'); }
+}
+
+// ── Update Notes ──────────────────────────────────────────────────────
+async function updateNotes(id, val) {
+  const m = members.find(x => x.id === id); if (!m) return;
+  m.notes = val;
+  localStorage.setItem('isl_tracker', JSON.stringify(members));
+  if (!accessToken || !rowMap[id]) return;
+  try {
+    setSyncStatus('syncing');
+    await apiUpdate(rowMap[id], memberToRow(m));
+    setSyncStatus('idle');
+  } catch(e) { setSyncStatus('error'); }
+}
+
+// ── Delete Member ─────────────────────────────────────────────────────
+async function deleteMember(id) {
+  const m = members.find(x => x.id === id);
+  if (!m || !confirm(`Remove ${m.name}?`)) return;
+  const rowNum = rowMap[id];
+  members = members.filter(x => x.id !== id);
+  delete rowMap[id];
+  localStorage.setItem('isl_tracker', JSON.stringify(members));
+  if (accessToken && rowNum) {
+    setSyncStatus('syncing');
+    try {
+      await apiDeleteRow(rowNum);
+      await loadFromSheet(); // reload to keep row numbers accurate
+    } catch(e) { setSyncStatus('error'); showToast('Delete sync error: ' + e.message, 'err'); }
+  } else {
+    renderAll();
+  }
+  showToast(`${m.name} removed`);
+}
+
+// ── Filtering ─────────────────────────────────────────────────────────
+function getFiltered() {
+  const q  = document.getElementById('searchInput').value.toLowerCase();
+  const st = document.getElementById('fStatus').value;
+  const is = document.getElementById('fISL').value;
+  const co = document.getElementById('fContrib').value;
+  return members.filter(m => {
+    if (q  && !m.name.toLowerCase().includes(q) && !(m.email||'').toLowerCase().includes(q)) return false;
+    if (st && m.status !== st) return false;
+    if (is) {
+      const v = (m.islMember||'').toLowerCase();
+      if (is==='yes'        && !v.includes('yes'))                              return false;
+      if (is==='interested' && !v.includes('interested'))                       return false;
+      if (is==='no'         && (v.includes('yes')||v.includes('interested')))   return false;
+    }
+    if (co) {
+      const v = (m.willContribute||'').toLowerCase();
+      if (co==='yes' && !v.includes('yes')) return false;
+      if (co==='no'  &&  v.includes('yes')) return false;
+    }
+    return true;
+  });
+}
+
+// ── Render ────────────────────────────────────────────────────────────
+function answerBadge(val, type) {
+  if (!val) return '<span class="badge bg-gray">—</span>';
+  if (type==='email') return `<a href="mailto:${esc(val)}" style="color:var(--blue);text-decoration:none">${esc(val)}</a>`;
+  const v = val.toLowerCase();
+  if (v==='yes'||v==='i agree') return `<span class="badge bg-green">${esc(val)}</span>`;
+  if (v.includes('interested'))  return `<span class="badge bg-yellow">${esc(val)}</span>`;
+  if (v==='no')                  return `<span class="badge bg-red">${esc(val)}</span>`;
+  return `<span class="badge bg-gray">${esc(val)}</span>`;
+}
+
+function renderTable() {
+  const list  = getFiltered();
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+  document.getElementById('memberCount').textContent = list.length;
+  document.getElementById('totalCount').textContent  = list.length < members.length ? `(${members.length} total)` : '';
+  if (!list.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = list.map((m,i) => `
+    <tr>
+      <td style="color:var(--muted);font-weight:600;font-size:11px">${i+1}</td>
+      <td><strong>${esc(m.name)}</strong></td>
+      <td style="white-space:nowrap;color:var(--muted);font-size:12px">${esc(m.date)}</td>
+      <td>${answerBadge(m.islMember)}</td>
+      <td>${answerBadge(m.email,'email')}</td>
+      <td>${answerBadge(m.willContribute)}</td>
+      <td>${answerBadge(m.agreedRules)}</td>
+      <td>
+        <select class="status-sel" onchange="updateStatus(${m.id},this.value)">
+          ${STATUSES.map(s=>`<option value="${s}" ${m.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </td>
+      <td><input class="notes-inp" type="text" value="${esc(m.notes||'')}" placeholder="Add notes…" onblur="updateNotes(${m.id},this.value)"/></td>
+      <td><button class="btn-sm-danger" onclick="deleteMember(${m.id})">✕</button></td>
+    </tr>`).join('');
+}
+
+function updateStats() {
+  const td = todayStr();
+  document.getElementById('statsGrid').innerHTML = [
+    { n: members.length,                                                                lbl:'Total Members',  c:'var(--blue)' },
+    { n: members.filter(m=>m.date===td).length,                                        lbl:'Added Today',    c:'var(--green)' },
+    { n: members.filter(m=>m.status==='Contacted').length,                             lbl:'Contacted',      c:'var(--yellow)' },
+    { n: members.filter(m=>m.status==='Qualified').length,                             lbl:'Qualified',      c:'var(--green)' },
+    { n: members.filter(m=>(m.islMember||'').toLowerCase().includes('yes')).length,    lbl:'ISL Members',    c:'var(--purple)' },
+  ].map(s=>`<div class="stat-card"><div class="num" style="color:${s.c}">${s.n}</div><div class="lbl">${s.lbl}</div></div>`).join('');
+}
+
+function renderAll() { updateStats(); renderTable(); }
+
+// ── Export CSV ────────────────────────────────────────────────────────
+function exportCSV() {
+  const list = getFiltered();
+  if (!list.length) { showToast('No data to export', 'err'); return; }
+  const cols = ['Name','Date','ISL Member?','Work Email','Will Contribute?','Agreed to Rules?','Status','Notes'];
+  const rows = list.map(m => [m.name,m.date,m.islMember||'',m.email||'',m.willContribute||'',m.agreedRules||'',m.status,m.notes||'']
+    .map(v=>`"${String(v).replace(/"/g,'""')}"`));
+  const csv = [cols.join(','),...rows.map(r=>r.join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `ISL_Members_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('CSV downloaded');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function clearForm() {
+  ['memberName','pasteArea','memberDate'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('previewBox').style.display = 'none';
+}
+function todayStr() { return new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type==='err' ? 'var(--red)' : '#323232';
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────
+updateAuthUI();
+renderAll();
+// Show setup modal if no credentials configured yet
+if (!settings.clientId || !settings.sheetId) openSettings();
+// If credentials exist but GIS not loaded yet, wait for onGISLoad()
+// If credentials exist and GIS already loaded, init token client
+if (settings.clientId && gisLoaded) initTokenClient();
+</script>
+</body>
+</html>
