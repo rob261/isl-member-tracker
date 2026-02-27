@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ISL Group Member Tracker</title>
 <script src="https://accounts.google.com/gsi/client" async onload="onGISLoad()"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -266,6 +267,26 @@ tr:hover td { background: #fafbff; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ── ISL Chart ── */
+.chart-card {
+  background: white; border-radius: 12px;
+  padding: 20px 24px; margin-bottom: 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  display: flex; align-items: center; gap: 32px;
+}
+.chart-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+.chart-wrap  { width: 180px; height: 180px; flex-shrink: 0; }
+.chart-legend { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+.legend-item { display: flex; align-items: center; gap: 12px; }
+.legend-dot  { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+.legend-label { font-size: 13px; color: var(--muted); }
+.legend-val   { font-size: 20px; font-weight: 700; margin-left: auto; }
+.legend-pct   { font-size: 12px; color: var(--muted); margin-left: 4px; }
+@media (max-width: 600px) {
+  .chart-card { flex-direction: column; align-items: flex-start; }
+  .chart-wrap { width: 160px; height: 160px; }
+}
+
 /* ── Sign-in Gate ── */
 .signin-gate {
   position: fixed; inset: 0;
@@ -428,6 +449,15 @@ tr:hover td { background: #fafbff; }
 
   <!-- Stats -->
   <div class="stats-grid" id="statsGrid"></div>
+
+  <!-- ISL Membership Chart -->
+  <div class="chart-card" id="chartCard" style="display:none">
+    <div>
+      <div class="chart-title">ISL Membership Breakdown</div>
+      <div class="chart-wrap"><canvas id="islChart"></canvas></div>
+    </div>
+    <div class="chart-legend" id="chartLegend"></div>
+  </div>
 
   <!-- Add Panel -->
   <div class="add-panel">
@@ -983,7 +1013,65 @@ function updateStats() {
   ].map(s=>`<div class="stat-card"><div class="num" style="color:${s.c}">${s.n}</div><div class="lbl">${s.lbl}</div></div>`).join('');
 }
 
-function renderAll() { updateStats(); renderTable(); }
+let islChartInstance = null;
+
+function renderChart() {
+  const card = document.getElementById('chartCard');
+  if (!members.length) { card.style.display = 'none'; return; }
+  card.style.display = 'flex';
+
+  const isl        = members.filter(m => (m.islMember||'').toLowerCase().includes('yes')).length;
+  const interested = members.filter(m => (m.islMember||'').toLowerCase().includes('interested')).length;
+  const notMember  = members.length - isl - interested;
+  const total      = members.length;
+
+  const pct = n => total ? Math.round((n / total) * 100) : 0;
+
+  const items = [
+    { label: 'ISL Member',            count: isl,        color: '#137333', bg: '#e6f4ea' },
+    { label: 'Not a Member',          count: notMember,  color: '#c5221f', bg: '#fce8e6' },
+    { label: 'Not a Member — Interested', count: interested, color: '#a37900', bg: '#fef7e0' },
+  ];
+
+  // Legend
+  document.getElementById('chartLegend').innerHTML = items.map(it => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${it.color}"></div>
+      <span class="legend-label">${it.label}</span>
+      <span class="legend-val" style="color:${it.color}">${it.count}</span>
+      <span class="legend-pct">${pct(it.count)}%</span>
+    </div>`).join('');
+
+  // Chart
+  const ctx = document.getElementById('islChart').getContext('2d');
+  if (islChartInstance) islChartInstance.destroy();
+  islChartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: items.map(i => i.label),
+      datasets: [{
+        data: items.map(i => i.count),
+        backgroundColor: items.map(i => i.color),
+        borderColor: items.map(i => i.bg),
+        borderWidth: 3,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.raw} (${pct(ctx.raw)}%)`
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderAll() { updateStats(); renderChart(); renderTable(); }
 
 // ── Export CSV ────────────────────────────────────────────────────────
 function exportCSV() {
