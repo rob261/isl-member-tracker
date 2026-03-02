@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISL Group Member Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async onload="onGISLoad()"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ===================================================================
+   ISL Group Member Tracker — Enterprise UI Theme (drop-in replacement)
+   - Replace the entire existing <style>...</style> with this block.
+   - No JS or HTML changes required.
+   =================================================================== */
+
+/* ---------- Design tokens ---------- */
+:root{
+  --brand-500: #4f46e5; /* primary */
+  --brand-600: #4338ca; /* primary-hover */
+  --bg: #f7fafc;
+  --surface: #ffffff;
+  --muted: #64748b;
+  --text: #0f172a;
+  --border: #e6eef8;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --sidebar-w: 272px;
+  --topbar-h: 68px;
+  --success: #137333;
+  --danger: #c5221f;
+  --warning: #a37900;
+  --shadow-xs: 0 1px 2px rgba(15,23,42,0.06);
+  --shadow-sm: 0 4px 10px rgba(15,23,42,0.08);
+  --shadow-md: 0 18px 42px rgba(15,23,42,0.12);
+}
+
+/* ---------- Reset / base ---------- */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#app{height:100%}
+body{
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  line-height:1.45;
+  font-size:15px;
+}
+
+/* ---------- App shell ---------- */
+.app-shell{display:flex;min-height:100vh}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:var(--sidebar-w);
+  min-width:var(--sidebar-w);
+  height:100vh;
+  position:fixed;left:0;top:0;
+  background:#0f172a;
+  color:#e6eef8;
+  display:flex;flex-direction:column;z-index:40;
+  box-shadow:var(--shadow-xs);
+}
+.sidebar-logo{display:flex;gap:12px;align-items:center;padding:20px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.sidebar-logo-name{font-weight:700;font-size:14px}
+.sidebar-logo-sub{font-size:12px;color:rgba(255,255,255,0.7)}
+.sidebar-nav{flex:1;padding:12px 10px 20px}
+.nav-section-label{font-size:10px;font-weight:700;letter-spacing:0.08em;color:#94a3b8;margin:8px 4px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;
+  color:#9aa6b6;background:none;border:none;text-align:left;width:100%;
+  font-weight:600;font-size:13.2px;cursor:pointer;transition:all .14s;
+}
+.nav-item:hover{background:rgba(255,255,255,0.04);color:#f8fafc}
+.nav-item.active{background:linear-gradient(90deg, rgba(79,70,229,0.16), rgba(79,70,229,0.06));color:#fff}
+.sidebar-bottom{padding:12px;border-top:1px solid rgba(255,255,255,0.04)}
+.btn-add-member{
+  width:100%;padding:11px 14px;border-radius:12px;background:var(--brand-500);
+  color:white;border:none;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-add-member:hover{background:var(--brand-600)}
+
+/* ---------- Main area & topbar ---------- */
+.main-area{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{
+  height:var(--topbar-h);display:flex;align-items:center;gap:16px;padding:0 22px;
+  background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:30;box-shadow:var(--shadow-xs)
+}
+.topbar-search{flex:1;max-width:420px;position:relative;display:flex;align-items:center}
+.topbar-search input{
+  width:100%;padding:9px 14px 9px 40px;border:1px solid var(--border);border-radius:10px;background:var(--bg);outline:none;font-size:14px
+}
+.topbar-search input:focus{box-shadow:0 0 0 5px rgba(79,70,229,0.06);border-color:var(--brand-500);background:var(--surface)}
+.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.sync-pill{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:20px;background:#f3f6fb;color:var(--muted);font-weight:700;font-size:13px}
+.sync-dot{width:9px;height:9px;border-radius:50%}
+.sync-dot.idle{background:var(--success)}
+.sync-dot.syncing{background:var(--warning);animation:pulse 1s infinite}
+.sync-dot.error{background:var(--danger)}
+@keyframes pulse{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
+
+/* ---------- Content wrappers ---------- */
+.content{flex:1;padding:22px;background:transparent}
+.auth-banner{
+  background:linear-gradient(180deg,#fff7e6,#fff9f0);border:1px solid rgba(255,190,66,0.18);
+  padding:14px;border-radius:12px;margin-bottom:18px;display:flex;align-items:center;gap:12px;font-weight:600;color:#6b4d00
+}
+.auth-banner .btn-banner{margin-left:auto;background:var(--brand-500);color:#fff;padding:8px 12px;border-radius:9px;border:none}
+
+/* ---------- Stats grid ---------- */
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:18px}
+.stat-card{
+  background:var(--surface);padding:18px;border-radius:12px;border:1px solid var(--border);box-shadow:var(--shadow-xs);
+  text-align:center;transition:transform .18s,var(--shadow-sm)
+}
+.stat-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-sm)}
+.stat-card .num{font-size:28px;font-weight:800}
+.stat-card .lbl{font-size:12px;color:var(--muted);margin-top:6px}
+
+/* ---------- Chart card ---------- */
+.chart-card{display:flex;gap:28px;align-items:center;padding:18px;border-radius:12px;border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow-xs);margin-bottom:18px}
+.chart-wrap{width:180px;height:180px;flex-shrink:0}
+.chart-legend{display:flex;flex-direction:column;gap:10px;width:100%}
+.legend-item{display:flex;align-items:center;gap:10px}
+.legend-dot{width:12px;height:12px;border-radius:50%}
+.legend-label{font-weight:700;color:var(--muted);font-size:13px}
+.legend-val{margin-left:auto;font-weight:800;font-size:18px}
+.legend-pct{font-size:12px;color:var(--muted);margin-left:8px}
+
+/* ---------- Filters ---------- */
+.filters{display:flex;gap:10px;align-items:center;padding:12px;border-radius:12px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-xs);margin-bottom:14px;flex-wrap:wrap}
+.filters select,input{height:40px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:#fff}
+
+/* ---------- Inputs ---------- */
+input[type="text"], textarea, select{border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;background:#fff;color:var(--text);outline:none;transition:box-shadow .12s}
+input[type="text"]:focus,textarea:focus,select:focus{box-shadow:0 0 0 6px rgba(79,70,229,0.06);border-color:var(--brand-500)}
+textarea{min-height:140px;resize:vertical;font-family:monospace;font-size:13px}
+
+/* ---------- Buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+.btn-primary{background:var(--brand-500);color:#fff}
+.btn-primary:hover{background:var(--brand-600)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+
+/* ---------- Bulk bar ---------- */
+.bulk-bar{display:none;padding:12px;border-radius:12px;background:#0f172a;color:#fff;align-items:center;gap:12px;margin-bottom:14px}
+.bulk-bar .bulk-count{font-weight:800}
+.bulk-bar select{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:8px;border-radius:8px}
+
+/* ---------- Table ---------- */
+.table-wrap{border-radius:12px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-xs);overflow:hidden}
+.table-header{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid var(--border)}
+.table-header h2{font-weight:800;font-size:14px}
+.scroll-x{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#f3f6fb;padding:12px 14px;text-align:left;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;position:sticky;top:var(--topbar-h);z-index:10;border-bottom:1px solid var(--border)}
+td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:#fbfdff}
+
+/* badges */
+.badge{display:inline-block;padding:4px 9px;border-radius:9px;font-weight:800;font-size:12px}
+.bg-green{background:rgba(22,163,74,0.1);color:var(--success)}
+.bg-yellow{background:rgba(163,121,0,0.08);color:var(--warning)}
+.bg-red{background:rgba(197,34,31,0.08);color:var(--danger)}
+.bg-gray{background:rgba(95,99,104,0.06);color:#5f6368}
+
+/* compact inline controls */
+.status-sel{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:#fff;font-weight:700}
+.notes-inp{padding:6px 10px;border-radius:8px;border:1px solid var(--border);width:190px}
+
+/* ---------- Modal ---------- */
+.modal-overlay{position:fixed;inset:0;background:rgba(8,12,20,0.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:60}
+.modal-overlay.hidden{display:none}
+.modal{background:var(--surface);border-radius:18px;max-width:900px;width:100;box-shadow:var(--shadow-md);overflow:auto;max-height:92vh}
+.modal-header{background:linear-gradient(90deg,var(--brand-500),var(--brand-600));color:#fff;padding:20px;border-top-left-radius:18px;border-top-right-radius:18px;display:flex;justify-content:space-between;align-items:flex-start}
+.modal-header-text h2{font-weight:900;font-size:18px}
+.modal-body{padding:22px}
+.modal-close{background:transparent;border:none;color:rgba(255,255,255,0.9);font-size:22px;cursor:pointer}
+
+/* Add-member modal specifics */
+#addMemberModal .modal{max-width:820px}
+.add-grid{display:grid;grid-template-columns:220px 1fr 160px;gap:16px;align-items:start}
+.fg label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px}
+.preview-box{background:linear-gradient(180deg,#f9fbff,#f6f8ff);padding:12px;border-radius:10px;border:1px solid rgba(99,102,241,0.06);display:none}
+
+/* toast */
+.toast{position:fixed;right:24px;bottom:24px;background:#232323;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:var(--shadow-md);transform:translateY(80px);opacity:0;transition:all .28s;z-index:999}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* sign-in gate */
+.signin-gate{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#312e81 100%);display:flex;align-items:center;justify-content:center;z-index:1000}
+.signin-card{background:var(--surface);padding:44px;border-radius:18px;max-width:440px;text-align:center;box-shadow:var(--shadow-md)}
+.signin-card h2{font-weight:900;font-size:22px;margin-bottom:6px}
+
+/* scrollbar */
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+
+/* responsive */
+@media (max-width:1100px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:900px){
+  .sidebar{transform:translateX(-105%);position:fixed}
+  .main-area{margin-left:0}
+  .add-grid{grid-template-columns:1fr}
+  .btn-col{flex-direction:row}
+  .chart-card{flex-direction:column;align-items:flex-start}
+}
+@media (max-width:640px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+</head>
+<body>
+
+<!-- ── Sign-in Gate ── -->
+<div class="signin-gate" id="signinGate">
+  <div class="signin-card">
+    <div class="signin-logo">
+      <svg width="52" height="52" viewBox="0 0 36 36">
+        <path fill="#4f46e5" d="M18 3C9.716 3 3 9.716 3 18c0 7.31 5.155 13.418 12.046 14.818V22.535h-3.48v-4.07h3.48v-2.746c0-4.09 2.087-5.952 5.514-5.952 1.644 0 2.518.122 2.928.177v3.226h-2.346c-1.45 0-1.957.694-1.957 2.235v3.06h4.268l-.577 4.07h-3.691v10.337C27.718 31.564 33 25.4 33 18c0-8.284-6.716-15-15-15z"/>
+      </svg>
+    </div>
+    <h2>Insurance Sales Lab</h2>
+    <p class="subtitle">Facebook Group Member Tracker<br>Team access only</p>
+    <button class="btn-google" id="btnGoogleSignIn" onclick="signIn()">
+      <svg width="20" height="20" viewBox="0 0 24 24">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Sign in with Google
+    </button>
+  </div>
+  <p class="signin-footer">Access restricted to authorized team members only</p>
+</div>
+
+<!-- ── App Shell ── -->
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="34" height="34" viewBox="0 0 36 36">
+        <path fill="white" d="M18 3C9.716 3 3 9.716 3 18c0 7.31 5.155 13.418 12.046 14.818V22.535h-3.48v-4.07h3.48v-2.746c0-4.09 2.087-5.952 5.514-5.952 1.644 0 2.518.122 2.928.177v3.226h-2.346c-1.45 0-1.957.694-1.957 2.235v3.06h4.268l-.577 4.07h-3.691v10.337C27.718 31.564 33 25.4 33 18c0-8.284-6.716-15-15-15z"/>
+      </svg>
+      <div>
+        <div class="sidebar-logo-name">ISL Tracker</div>
+        <div class="sidebar-logo-sub">Insurance Sales Lab</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <button class="nav-item active">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
+        Tracker
+      </button>
+      <button class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+        </svg>
+        Analytics
+      </button>
+      <button class="nav-item" onclick="openSettings()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.08 7.08 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54a7.47 7.47 0 0 0-1.61.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.08.63-.08.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.36 1.04.67 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7.47 7.47 0 0 0 1.61-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/>
+        </svg>
+        Settings
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="btn-add-member" onclick="openAddModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        Add Member
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Area -->
+  <div class="main-area">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-search">
+        <span class="search-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+        </span>
+        <input type="text" id="searchInput" placeholder="Search members by name or email…" oninput="renderTable()" />
+      </div>
+      <div class="topbar-right">
+        <div class="sync-pill" id="syncPill">
+          <div class="sync-dot offline" id="syncDot"></div>
+          <span id="syncLabel">Not connected</span>
+        </div>
+        <button class="btn-auth sign-in" id="btnSignIn" onclick="signIn()" style="display:none">Sign in with Google</button>
+        <button class="btn-auth" id="btnSignOut" onclick="signOut()" style="display:none">Sign Out</button>
+        <button class="btn-settings" onclick="openSettings()" title="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.08 7.08 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54a7.47 7.47 0 0 0-1.61.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.08.63-.08.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.36 1.04.67 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7.47 7.47 0 0 0 1.61-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content">
+
+      <!-- Auth Banner -->
+      <div class="auth-banner hidden" id="authBanner">
+        <span class="icon">🔗</span>
+        <div>
+          <strong>Not signed in to Google.</strong>
+          Data is saved locally only. Sign in to sync with Google Sheets.
+        </div>
+        <button class="btn-banner" onclick="signIn()">Sign in with Google</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="statsGrid"></div>
+
+      <!-- ISL Membership Chart -->
+      <div class="chart-card" id="chartCard" style="display:none">
+        <div>
+          <div class="chart-title">ISL Membership Breakdown</div>
+          <div class="chart-wrap"><canvas id="islChart"></canvas></div>
+        </div>
+        <div class="chart-legend" id="chartLegend"></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters">
+        <select id="fStatus" onchange="renderTable()">
+          <option value="">All Statuses</option>
+          <option>Added to automation</option>
+          <option>Not added to automation</option>
+        </select>
+        <select id="fISL" onchange="renderTable()">
+          <option value="">ISL Member: All</option>
+          <option value="yes">ISL Member: Yes</option>
+          <option value="interested">Interested in ISL</option>
+          <option value="no">Not a Member</option>
+        </select>
+        <select id="fContrib" onchange="renderTable()">
+          <option value="">Contribute: All</option>
+          <option value="yes">Will Contribute</option>
+          <option value="no">Will Not Contribute</option>
+        </select>
+        <select id="fSort" onchange="renderTable()">
+          <option value="newest">Newest → Oldest</option>
+          <option value="oldest">Oldest → Newest</option>
+        </select>
+        <button class="btn btn-outline" onclick="refreshFromSheet()" id="btnRefresh" title="Reload from Google Sheets">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          Refresh
+        </button>
+        <button class="btn btn-outline" onclick="exportCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          Export CSV
+        </button>
+      </div>
+
+      <!-- Bulk Action Bar -->
+      <div class="bulk-bar" id="bulkBar" style="display:none">
+        <span class="bulk-count" id="bulkCount">0 selected</span>
+        <select id="bulkStatus">
+          <option value="">Set status…</option>
+          <option>Added to automation</option>
+          <option>Not added to automation</option>
+        </select>
+        <button class="bulk-apply" onclick="applyBulkStatus()">Apply to Selected</button>
+        <button class="bulk-clear" onclick="clearSelection()">✕ Deselect All</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <div class="table-header">
+          <h2>Members &mdash; <span id="memberCount">0</span> shown <span id="totalCount" style="font-size:12px;color:var(--muted);font-weight:400"></span></h2>
+        </div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)" title="Select all"></th>
+                <th>#</th><th>Name</th><th>Date</th>
+                <th>ISL Member?</th><th>Work Email</th>
+                <th>Will Contribute?</th><th>Agreed to Rules?</th>
+                <th>Status</th><th>Notes</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+          <div class="empty" id="emptyState" style="display:none">
+            <div class="icon">👥</div>
+            <p>No members yet. Click <strong>Add Member</strong> in the sidebar to get started.</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- end .main-area -->
+</div><!-- end .app-shell -->
+
+<div class="toast" id="toast"></div>
+
+<!-- ── Settings Modal ── -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h2 id="modalTitle">Connect to Google Sheets</h2>
+        <p id="modalSubtitle">One-time setup — takes about 5 minutes</p>
+      </div>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Start a local server (required for OAuth)</h3>
+          <p>Open <strong>Terminal</strong> and run this command:</p>
+          <pre>cd "/Users/robmcafee/Downloads/Claude Code" &amp;&amp; python3 -m http.server 8080</pre>
+          <p style="margin-top:8px">Then open <a href="http://localhost:8080/member-tracker.html" target="_blank"><strong>http://localhost:8080/member-tracker.html</strong></a></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Create a Google Cloud project &amp; get your Client ID</h3>
+          <p>
+            1. Go to <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a><br>
+            2. Create a new project (or select existing)<br>
+            3. Enable <strong>Google Sheets API</strong><br>
+            4. Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth 2.0 Client ID</strong><br>
+            5. Type: <strong>Web application</strong><br>
+            6. Authorized JS origins: <code>http://localhost:8080</code><br>
+            7. Copy your <strong>Client ID</strong>
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Create your Google Sheet</h3>
+          <p>
+            1. Create a new Google Sheet at <a href="https://sheets.new" target="_blank">sheets.new</a><br>
+            2. Leave the first tab named <strong>Sheet1</strong><br>
+            3. Copy the Sheet ID from the URL:<br>
+            <code>https://docs.google.com/spreadsheets/d/<strong>YOUR_SHEET_ID</strong>/edit</code>
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-inputs">
+      <h3>Enter your credentials</h3>
+      <div class="mfg">
+        <label>Google OAuth Client ID</label>
+        <input type="text" id="inputClientId" placeholder="123456789-abc.apps.googleusercontent.com" />
+      </div>
+      <div class="mfg">
+        <label>Google Sheet ID</label>
+        <input type="text" id="inputSheetId" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-skip" onclick="closeModal()">Use Offline (Local Only)</button>
+      <button class="btn btn-save btn-primary" onclick="saveSettings()">Save &amp; Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Member Modal ── -->
+<div class="modal-overlay hidden" id="addMemberModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h2>Add New Member</h2>
+        <p>Paste the Facebook Q&amp;A answers to parse and add</p>
+      </div>
+      <button class="modal-close" onclick="closeAddModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="add-grid">
+        <div class="fg">
+          <label>Member Name *</label>
+          <input type="text" id="memberName" placeholder="e.g. Robert Pico" />
+          <label style="margin-top:10px">Date Joined</label>
+          <input type="text" id="memberDate" placeholder="Defaults to today" />
+        </div>
+        <div class="fg">
+          <label>Paste Facebook Q&amp;A Answers *</label>
+          <textarea id="pasteArea"
+            placeholder="Paste the member's answers from Facebook:
+
+* Are you a member of Insurance Sales Lab?
+No, but I am interested
+* Please provide your WORK email for verification purposes
+email@example.com
+* Are you willing to CONTRIBUTE in this group, and not just be a CONSUMER?
+Yes
+Do you agree to the group rules from the admin?
+I agree" oninput="livePreview()"></textarea>
+        </div>
+        <div class="btn-col">
+          <button class="btn btn-primary" onclick="addMember()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Parse &amp; Add
+          </button>
+          <button class="btn btn-outline" onclick="clearForm()">Clear</button>
+        </div>
+      </div>
+      <div class="preview-box" id="previewBox">
+        <h4>Parsed Preview</h4>
+        <div class="preview-grid" id="previewGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config & State ────────────────────────────────────────────────────
+const SHEET_TAB      = 'Sheet1';
+const SHEET_RANGE    = `${SHEET_TAB}!A:I`;
+const HEADERS        = ['ID','Name','Date','ISL Member?','Work Email','Will Contribute?','Agreed to Rules?','Status','Notes'];
+const ARCHIVE_TAB    = 'Sheet2';
+const ARCHIVE_RANGE  = `${ARCHIVE_TAB}!A:J`;
+const ARCHIVE_HEADERS = [...HEADERS, 'Archived Date'];
+const STATUSES    = ['Added to automation','Not added to automation'];
+const STATUS_CLS  = { 'Added to automation':'bg-green','Not added to automation':'bg-gray' };
+const QUESTIONS   = [
+  { key:'islMember',      match:'member of insurance sales lab' },
+  { key:'email',          match:'work email' },
+  { key:'willContribute', match:'willing to contribute' },
+  { key:'agreedRules',    match:'agree to the group rules' },
+];
+
+const DEFAULT_SETTINGS = {
+  clientId: '1038199509852-let2a3mhpl464lqs4use2dij9v39qt6t.apps.googleusercontent.com',
+  sheetId:  '1D4RmX_Ph2-aNmzkrKwmuKluH4KmSifCq7x5FH-Xp0g8',
+};
+let settings    = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('isl_settings') || '{}') };
+let members     = JSON.parse(localStorage.getItem('isl_tracker')  || '[]');
+let rowMap      = {}; // memberId → 1-based sheet row number
+let accessToken = null;
+let tokenClient = null;
+let gisLoaded   = false;
+let selectedIds = new Set();
+
+// ── Add Member Modal ───────────────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('addMemberModal').classList.remove('hidden');
+}
+function closeAddModal() {
+  document.getElementById('addMemberModal').classList.add('hidden');
+  clearForm();
+}
+
+// ── Bulk Selection ────────────────────────────────────────────────────
+function toggleSelect(id, checked) {
+  if (checked) selectedIds.add(id); else selectedIds.delete(id);
+  updateBulkBar();
+}
+
+function toggleSelectAll(checked) {
+  getFiltered().forEach(m => checked ? selectedIds.add(m.id) : selectedIds.delete(m.id));
+  renderTable();
+  updateBulkBar();
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  const sa = document.getElementById('selectAll');
+  if (sa) sa.checked = false;
+  renderTable();
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  const n   = selectedIds.size;
+  document.getElementById('bulkCount').textContent = `${n} member${n !== 1 ? 's' : ''} selected`;
+  bar.style.display = n > 0 ? 'flex' : 'none';
+}
+
+async function applyBulkStatus() {
+  const val = document.getElementById('bulkStatus').value;
+  if (!val) { showToast('Choose a status first', 'err'); return; }
+  const ids = [...selectedIds];
+  ids.forEach(id => { const m = members.find(x => x.id === id); if (m) m.status = val; });
+  localStorage.setItem('isl_tracker', JSON.stringify(members));
+  const count = ids.length;
+  selectedIds.clear();
+  updateBulkBar();
+  renderAll();
+  if (accessToken) {
+    setSyncStatus('syncing');
+    try {
+      await Promise.all(ids.map(id => {
+        const m = members.find(x => x.id === id);
+        return (m && rowMap[id]) ? apiUpdate(rowMap[id], memberToRow(m)) : null;
+      }).filter(Boolean));
+      setSyncStatus('idle');
+    } catch(e) { setSyncStatus('error'); showToast('Bulk sync error: ' + e.message, 'err'); return; }
+  }
+  showToast(`✓ ${count} member${count !== 1 ? 's' : ''} updated to "${val}"`);
+}
+
+// ── GIS ───────────────────────────────────────────────────────────────
+function onGISLoad() {
+  gisLoaded = true;
+  if (settings.clientId) initTokenClient();
+}
+
+function initTokenClient() {
+  if (!window.google || !settings.clientId) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: settings.clientId,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: handleToken,
+  });
+}
+
+function handleToken(resp) {
+  if (resp.error) { showToast('Auth error: ' + resp.error, 'err'); return; }
+  accessToken = resp.access_token;
+  // Token expires in ~1 hour — show gate again so user re-authenticates
+  setTimeout(() => { accessToken = null; members = []; showGate(); updateAuthUI(); renderAll(); }, (resp.expires_in - 60) * 1000);
+  document.getElementById('signinGate').classList.add('hidden');
+  updateAuthUI();
+  loadFromSheet();
+}
+
+function signIn() {
+  if (!settings.clientId || !settings.sheetId) { openSettings(); return; }
+  if (!gisLoaded) { showToast('Google auth library still loading, try again in a second', 'err'); return; }
+  if (!tokenClient) initTokenClient();
+  tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'select_account' });
+}
+
+function signOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken);
+  accessToken = null;
+  members = [];
+  showGate();
+  updateAuthUI();
+  renderAll();
+  showToast('Signed out');
+}
+
+function showGate() {
+  document.getElementById('signinGate').classList.remove('hidden');
+}
+
+// ── Auth UI ───────────────────────────────────────────────────────────
+function updateAuthUI() {
+  const connected = !!accessToken;
+  document.getElementById('btnSignIn').style.display  = connected ? 'none' : 'inline-flex';
+  document.getElementById('btnSignOut').style.display = connected ? 'inline-flex' : 'none';
+  document.getElementById('authBanner').classList.toggle('hidden', connected || !settings.clientId);
+  setSyncStatus(connected ? 'idle' : 'offline');
+}
+
+function setSyncStatus(state, label) {
+  const dot  = document.getElementById('syncDot');
+  const lbl  = document.getElementById('syncLabel');
+  dot.className = 'sync-dot ' + state;
+  const labels = { idle:'Synced', syncing:'Syncing…', error:'Sync error', offline:'Offline (local only)' };
+  lbl.textContent = label || labels[state] || state;
+}
+
+// ── Settings Modal ────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('inputClientId').value = settings.clientId || '';
+  document.getElementById('inputSheetId').value  = settings.sheetId  || '';
+  document.getElementById('modalTitle').textContent    = settings.clientId ? 'Settings' : 'Connect to Google Sheets';
+  document.getElementById('modalSubtitle').textContent = settings.clientId ? 'Update your credentials' : 'One-time setup — takes about 5 minutes';
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+function saveSettings() {
+  const cid = document.getElementById('inputClientId').value.trim();
+  const sid = document.getElementById('inputSheetId').value.trim();
+  if (!cid || !sid) { showToast('Please fill in both fields', 'err'); return; }
+  settings = { clientId: cid, sheetId: sid };
+  localStorage.setItem('isl_settings', JSON.stringify(settings));
+  closeModal();
+  initTokenClient();
+  updateAuthUI();
+  showToast('Settings saved — click "Sign in with Google"');
+}
+
+// ── Sheets API helpers ────────────────────────────────────────────────
+async function apiGet(range) {
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(range)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (r.status === 401) { accessToken = null; updateAuthUI(); throw new Error('Session expired — please sign in again'); }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiAppend(values) {
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(SHEET_RANGE)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [values] })
+    }
+  );
+  if (r.status === 401) { accessToken = null; updateAuthUI(); throw new Error('Session expired'); }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiUpdate(rowNum, values) {
+  const range = `${SHEET_TAB}!A${rowNum}:I${rowNum}`;
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [values] })
+    }
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiArchiveMember(m) {
+  // Check if Sheet2 has headers yet — if empty, write them first
+  try {
+    const check = await apiGet(ARCHIVE_RANGE);
+    if (!check.values || check.values.length === 0) {
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(ARCHIVE_RANGE)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [ARCHIVE_HEADERS] })
+        }
+      );
+    }
+  } catch(e) { /* Sheet2 may not exist yet — append will create it */ }
+
+  const archivedDate = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent(ARCHIVE_RANGE)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [[...memberToRow(m), archivedDate]] })
+    }
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiDeleteRow(rowNum) {
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{ deleteDimension: { range: { sheetId: 0, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum } } }]
+      })
+    }
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── Load from Sheet ───────────────────────────────────────────────────
+async function loadFromSheet() {
+  if (!accessToken) return;
+  setSyncStatus('syncing');
+  try {
+    const data = await apiGet(SHEET_RANGE);
+    const rows = data.values || [];
+    // If sheet is empty, write headers
+    if (rows.length === 0) {
+      await apiAppend(HEADERS);
+      members = []; rowMap = {};
+    } else {
+      members = []; rowMap = {};
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r[0]) continue;
+        const m = {
+          id:            parseInt(r[0]) || (Date.now() + i),
+          name:          r[1] || '',
+          date:          r[2] || '',
+          islMember:     r[3] || '',
+          email:         r[4] || '',
+          willContribute:r[5] || '',
+          agreedRules:   r[6] || '',
+          status:        r[7] || 'New Lead',
+          notes:         r[8] || '',
+        };
+        members.push(m);
+        rowMap[m.id] = i + 1; // row 1 = header, so member row = i+1
+      }
+    }
+    localStorage.setItem('isl_tracker', JSON.stringify(members));
+    setSyncStatus('idle');
+    renderAll();
+  } catch (e) {
+    setSyncStatus('error');
+    showToast(e.message, 'err');
+  }
+}
+
+async function refreshFromSheet() {
+  if (!accessToken) { showToast('Sign in first to refresh from Google Sheets', 'err'); return; }
+  await loadFromSheet();
+  showToast('Refreshed from Google Sheets');
+}
+
+// ── Parsing ───────────────────────────────────────────────────────────
+function parsePaste(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const result = {};
+  for (let i = 0; i < lines.length; i++) {
+    const clean = lines[i].replace(/^\*\s*/, '').toLowerCase();
+    for (const q of QUESTIONS) {
+      if (clean.includes(q.match) && i + 1 < lines.length) {
+        result[q.key] = lines[i + 1];
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+function livePreview() {
+  const box  = document.getElementById('previewBox');
+  const grid = document.getElementById('previewGrid');
+  const text = document.getElementById('pasteArea').value;
+  if (!text.trim()) { box.style.display = 'none'; return; }
+  const p = parsePaste(text);
+  if (!Object.values(p).some(Boolean)) { box.style.display = 'none'; return; }
+  const labels = { islMember:'ISL Member?', email:'Work Email', willContribute:'Will Contribute?', agreedRules:'Agreed to Rules?' };
+  grid.innerHTML = Object.entries(labels).map(([k,l]) => `
+    <div class="preview-row">
+      <span class="pq">${l}</span>
+      <span class="pa" style="color:${p[k]?'var(--green)':'var(--muted)'}">${p[k]||'—'}</span>
+    </div>`).join('');
+  box.style.display = 'block';
+}
+
+// ── Add Member ────────────────────────────────────────────────────────
+async function addMember() {
+  const name  = document.getElementById('memberName').value.trim();
+  const paste = document.getElementById('pasteArea').value.trim();
+  const date  = document.getElementById('memberDate').value.trim() || todayStr();
+
+  if (!name)  { showToast('Please enter the member name', 'err'); return; }
+  if (!paste) { showToast('Please paste the Q&A answers', 'err'); return; }
+
+  const parsed = parsePaste(paste);
+  if (!Object.values(parsed).some(Boolean)) {
+    showToast('Could not parse any answers — check the pasted format', 'err'); return;
+  }
+
+  const member = { id: Date.now(), name, date, status: 'Not added to automation', notes: '',
+    islMember: parsed.islMember||'', email: parsed.email||'',
+    willContribute: parsed.willContribute||'', agreedRules: parsed.agreedRules||'' };
+
+  if (!accessToken) {
+    // Offline — local only
+    members.unshift(member);
+    localStorage.setItem('isl_tracker', JSON.stringify(members));
+    renderAll(); closeAddModal();
+    showToast(`✓ ${name} added (offline — sign in to sync)`);
+    return;
+  }
+
+  setSyncStatus('syncing');
+  try {
+    const resp = await apiAppend(memberToRow(member));
+    // Extract the row number assigned by Sheets
+    const match = (resp.updates?.updatedRange || '').match(/!A(\d+)/);
+    if (match) rowMap[member.id] = parseInt(match[1]);
+    members.unshift(member);
+    localStorage.setItem('isl_tracker', JSON.stringify(members));
+    setSyncStatus('idle');
+    renderAll(); closeAddModal();
+    showToast(`✓ ${name} added to Google Sheets`);
+  } catch (e) {
+    setSyncStatus('error');
+    showToast('Error saving: ' + e.message, 'err');
+  }
+}
+
+function memberToRow(m) {
+  return [String(m.id), m.name, m.date, m.islMember||'', m.email||'', m.willContribute||'', m.agreedRules||'', m.status, m.notes||''];
+}
+
+// ── Update Status ─────────────────────────────────────────────────────
+async function updateStatus(id, val) {
+  const m = members.find(x => x.id === id); if (!m) return;
+  m.status = val;
+  localStorage.setItem('isl_tracker', JSON.stringify(members));
+  renderTable(); updateStats();
+  if (!accessToken || !rowMap[id]) return;
+  try {
+    setSyncStatus('syncing');
+    await apiUpdate(rowMap[id], memberToRow(m));
+    setSyncStatus('idle');
+  } catch(e) { setSyncStatus('error'); showToast('Sync error: ' + e.message, 'err'); }
+}
+
+// ── Update Notes ──────────────────────────────────────────────────────
+async function updateNotes(id, val) {
+  const m = members.find(x => x.id === id); if (!m) return;
+  m.notes = val;
+  localStorage.setItem('isl_tracker', JSON.stringify(members));
+  if (!accessToken || !rowMap[id]) return;
+  try {
+    setSyncStatus('syncing');
+    await apiUpdate(rowMap[id], memberToRow(m));
+    setSyncStatus('idle');
+  } catch(e) { setSyncStatus('error'); }
+}
+
+// ── Delete Member ─────────────────────────────────────────────────────
+async function deleteMember(id) {
+  const m = members.find(x => x.id === id);
+  if (!m || !confirm(`Remove ${m.name}?`)) return;
+  const rowNum = rowMap[id];
+  members = members.filter(x => x.id !== id);
+  delete rowMap[id];
+  localStorage.setItem('isl_tracker', JSON.stringify(members));
+  if (accessToken && rowNum) {
+    setSyncStatus('syncing');
+    try {
+      await apiArchiveMember(m);   // copy to Sheet2 first
+      await apiDeleteRow(rowNum);  // then remove from Sheet1
+      await loadFromSheet();       // reload to keep row numbers accurate
+    } catch(e) { setSyncStatus('error'); showToast('Archive/delete error: ' + e.message, 'err'); }
+  } else {
+    renderAll();
+  }
+  showToast(`${m.name} removed from tracker & archived to Sheet2`);
+}
+
+// ── Filtering ─────────────────────────────────────────────────────────
+function getFiltered() {
+  const q    = document.getElementById('searchInput').value.toLowerCase();
+  const st   = document.getElementById('fStatus').value;
+  const is   = document.getElementById('fISL').value;
+  const co   = document.getElementById('fContrib').value;
+  const sort = document.getElementById('fSort').value;
+
+  const list = members.filter(m => {
+    if (q  && !m.name.toLowerCase().includes(q) && !(m.email||'').toLowerCase().includes(q)) return false;
+    if (st && m.status !== st) return false;
+    if (is) {
+      const v = (m.islMember||'').toLowerCase();
+      if (is==='yes'        && !v.includes('yes'))                              return false;
+      if (is==='interested' && !v.includes('interested'))                       return false;
+      if (is==='no'         && (v.includes('yes')||v.includes('interested')))   return false;
+    }
+    if (co) {
+      const v = (m.willContribute||'').toLowerCase();
+      if (co==='yes' && !v.includes('yes')) return false;
+      if (co==='no'  &&  v.includes('yes')) return false;
+    }
+    return true;
+  });
+
+  list.sort((a, b) => {
+    const da = new Date(a.date), db = new Date(b.date);
+    return sort === 'oldest' ? da - db : db - da;
+  });
+
+  return list;
+}
+
+// ── Render ────────────────────────────────────────────────────────────
+function answerBadge(val, type) {
+  if (!val) return '<span class="badge bg-gray">—</span>';
+  if (type==='email') return `<a href="mailto:${esc(val)}" style="color:var(--blue);text-decoration:none">${esc(val)}</a>`;
+  const v = val.toLowerCase();
+  if (v==='yes'||v==='i agree') return `<span class="badge bg-green">${esc(val)}</span>`;
+  if (v.includes('interested'))  return `<span class="badge bg-yellow">${esc(val)}</span>`;
+  if (v==='no')                  return `<span class="badge bg-red">${esc(val)}</span>`;
+  return `<span class="badge bg-gray">${esc(val)}</span>`;
+}
+
+function renderTable() {
+  const list  = getFiltered();
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+  document.getElementById('memberCount').textContent = list.length;
+  document.getElementById('totalCount').textContent  = list.length < members.length ? `(${members.length} total)` : '';
+  if (!list.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = list.map((m,i) => `
+    <tr>
+      <td><input type="checkbox" ${selectedIds.has(m.id) ? 'checked' : ''} onchange="toggleSelect(${m.id}, this.checked)"></td>
+      <td style="color:var(--muted);font-weight:600;font-size:11px">${i+1}</td>
+      <td><strong>${esc(m.name)}</strong></td>
+      <td style="white-space:nowrap;color:var(--muted);font-size:12px">${esc(m.date)}</td>
+      <td>${answerBadge(m.islMember)}</td>
+      <td>${answerBadge(m.email,'email')}</td>
+      <td>${answerBadge(m.willContribute)}</td>
+      <td>${answerBadge(m.agreedRules)}</td>
+      <td>
+        <select class="status-sel" onchange="updateStatus(${m.id},this.value)">
+          ${STATUSES.map(s=>`<option value="${s}" ${m.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </td>
+      <td><input class="notes-inp" type="text" value="${esc(m.notes||'')}" placeholder="Add notes…" onblur="updateNotes(${m.id},this.value)"/></td>
+      <td><button class="btn-sm-danger" onclick="deleteMember(${m.id})">✕</button></td>
+    </tr>`).join('');
+}
+
+function updateStats() {
+  const td = todayStr();
+  document.getElementById('statsGrid').innerHTML = [
+    { n: members.length,                                                                lbl:'Total Members',  c:'var(--blue)' },
+    { n: members.filter(m=>m.date===td).length,                                               lbl:'Added Today',           c:'var(--green)' },
+    { n: members.filter(m=>m.status==='Added to automation').length,                          lbl:'Added to Automation',   c:'var(--green)' },
+    { n: members.filter(m=>m.status==='Not added to automation').length,                      lbl:'Not in Automation',     c:'var(--yellow)' },
+    { n: members.filter(m=>(m.islMember||'').toLowerCase().includes('yes')).length,           lbl:'ISL Members',           c:'var(--purple)' },
+  ].map(s=>`<div class="stat-card"><div class="num" style="color:${s.c}">${s.n}</div><div class="lbl">${s.lbl}</div></div>`).join('');
+}
+
+let islChartInstance = null;
+
+function renderChart() {
+  const card = document.getElementById('chartCard');
+  if (!members.length) { card.style.display = 'none'; return; }
+  card.style.display = 'flex';
+
+  const isl        = members.filter(m => (m.islMember||'').toLowerCase().includes('yes')).length;
+  const interested = members.filter(m => (m.islMember||'').toLowerCase().includes('interested')).length;
+  const notMember  = members.length - isl - interested;
+  const total      = members.length;
+
+  const pct = n => total ? Math.round((n / total) * 100) : 0;
+
+  const items = [
+    { label: 'ISL Member',            count: isl,        color: '#137333', bg: '#e6f4ea' },
+    { label: 'Not a Member',          count: notMember,  color: '#c5221f', bg: '#fce8e6' },
+    { label: 'Not a Member — Interested', count: interested, color: '#a37900', bg: '#fef7e0' },
+  ];
+
+  // Legend
+  document.getElementById('chartLegend').innerHTML = items.map(it => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${it.color}"></div>
+      <span class="legend-label">${it.label}</span>
+      <span class="legend-val" style="color:${it.color}">${it.count}</span>
+      <span class="legend-pct">${pct(it.count)}%</span>
+    </div>`).join('');
+
+  // Chart
+  const ctx = document.getElementById('islChart').getContext('2d');
+  if (islChartInstance) islChartInstance.destroy();
+  islChartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: items.map(i => i.label),
+      datasets: [{
+        data: items.map(i => i.count),
+        backgroundColor: items.map(i => i.color),
+        borderColor: items.map(i => i.bg),
+        borderWidth: 3,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.raw} (${pct(ctx.raw)}%)`
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderAll() { updateStats(); renderChart(); renderTable(); }
+
+// ── Export CSV ────────────────────────────────────────────────────────
+function exportCSV() {
+  const list = getFiltered();
+  if (!list.length) { showToast('No data to export', 'err'); return; }
+  const cols = ['Name','Date','ISL Member?','Work Email','Will Contribute?','Agreed to Rules?','Status','Notes'];
+  const rows = list.map(m => [m.name,m.date,m.islMember||'',m.email||'',m.willContribute||'',m.agreedRules||'',m.status,m.notes||'']
+    .map(v=>`"${String(v).replace(/"/g,'""')}"`));
+  const csv = [cols.join(','),...rows.map(r=>r.join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `ISL_Members_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('CSV downloaded');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function clearForm() {
+  ['memberName','pasteArea','memberDate'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('previewBox').style.display = 'none';
+}
+function todayStr() { return new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type==='err' ? 'var(--red)' : '#323232';
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────
+// Gate is visible by default — nothing shown until signed in
+updateAuthUI();
+// Don't renderAll() on load — wait for successful Google sign-in
+if (settings.clientId && gisLoaded) initTokenClient();
+</script>
+</body>
+</html>
