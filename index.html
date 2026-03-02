@@ -4,253 +4,496 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ISL Group Member Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async onload="onGISLoad()"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-/* ── Modernized UI Variables ── */
+/* ── CSS Variables ── */
 :root {
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --bg: #f8fafc;
-  --card: #ffffff;
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --border: #e2e8f0;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --radius: 12px;
+  --primary:      #4f46e5;
+  --primary-hover:#4338ca;
+  --bg:           #f8fafc;
+  --card:         #ffffff;
+  --text-main:    #0f172a;
+  --text-muted:   #64748b;
+  --border:       #e2e8f0;
+  --success:      #10b981;
+  --danger:       #ef4444;
+  --warning:      #f59e0b;
+  --shadow:       0 1px 3px 0 rgb(0 0 0/.1), 0 1px 2px -1px rgb(0 0 0/.1);
+  --shadow-md:    0 4px 6px -1px rgb(0 0 0/.1), 0 2px 4px -2px rgb(0 0 0/.1);
+  --radius:       12px;
+  --sidebar-w:    260px;
+  --topbar-h:     64px;
   /* Badge colors */
-  --green: #137333;  --green-bg: #e6f4ea;
+  --green:  #137333; --green-bg:  #e6f4ea;
   --yellow: #a37900; --yellow-bg: #fef7e0;
-  --red: #c5221f;    --red-bg: #fce8e6;
+  --red:    #c5221f; --red-bg:    #fce8e6;
   --purple: #6200ea; --purple-bg: #f3e8fd;
-  --gray: #5f6368;   --gray-bg: #f1f3f4;
+  --gray:   #5f6368; --gray-bg:   #f1f3f4;
+  /* JS compatibility aliases (referenced by existing inline styles in JS) */
+  --blue: var(--primary);
+  --muted: var(--text-muted);
 }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: 'Inter', -apple-system, system-ui, sans-serif;
-  background-color: var(--bg);
+  background: var(--bg);
   color: var(--text-main);
   line-height: 1.5;
+}
+
+/* ── App Shell ── */
+.app-shell {
+  display: flex;
   min-height: 100vh;
 }
 
-/* ── Header ── */
-.header {
-  background: white;
-  color: var(--text-main);
-  padding: 16px 32px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 200;
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  height: 100vh;
+  position: fixed;
+  top: 0; left: 0;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+  z-index: 300;
+  overflow-y: auto;
 }
-.header-left { display: flex; align-items: center; gap: 12px; }
-.header-title h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.025em; }
-.header-title p { color: var(--text-muted); font-size: 12px; }
-.header-right { display: flex; align-items: center; gap: 10px; }
 
-.sync-pill {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 12px; border-radius: 20px;
-  font-size: 12px; font-weight: 600;
-  background: rgba(0,0,0,.06);
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  flex-shrink: 0;
 }
-.sync-dot { width: 8px; height: 8px; border-radius: 50%; }
-.sync-dot.idle    { background: #10b981; }
-.sync-dot.syncing { background: #f59e0b; animation: pulse 1s infinite; }
-.sync-dot.error   { background: #ef4444; }
+.sidebar-logo-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f1f5f9;
+  line-height: 1.3;
+}
+.sidebar-logo-sub {
+  font-size: 11px;
+  color: #475569;
+  margin-top: 1px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 12px;
+}
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #334155;
+  padding: 0 8px;
+  margin: 10px 0 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background .15s, color .15s;
+  margin-bottom: 1px;
+  font-family: inherit;
+}
+.nav-item:hover { background: rgba(255,255,255,.06); color: #e2e8f0; }
+.nav-item.active { background: rgba(79,70,229,.28); color: #fff; font-weight: 600; }
+.nav-item svg { flex-shrink: 0; opacity: .8; }
+.nav-item.active svg { opacity: 1; }
+
+.sidebar-bottom {
+  padding: 12px 12px 20px;
+  border-top: 1px solid rgba(255,255,255,.07);
+  flex-shrink: 0;
+}
+.btn-add-member {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+  font-family: inherit;
+}
+.btn-add-member:hover { background: var(--primary-hover); }
+
+/* ── Main Area ── */
+.main-area {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Topbar ── */
+.topbar {
+  height: var(--topbar-h);
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+.topbar-search {
+  flex: 1;
+  max-width: 360px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.topbar-search .search-icon {
+  position: absolute;
+  left: 11px;
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+.topbar-search input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  background: var(--bg);
+  color: var(--text-main);
+  transition: all .2s;
+}
+.topbar-search input:focus {
+  border-color: var(--primary);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.sync-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: var(--text-muted);
+}
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sync-dot.idle    { background: var(--success); }
+.sync-dot.syncing { background: var(--warning); animation: pulse 1s infinite; }
+.sync-dot.error   { background: var(--danger); }
 .sync-dot.offline { background: #94a3b8; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
 .btn-auth {
-  padding: 7px 16px; border-radius: 8px; border: none;
-  font-size: 13px; font-weight: 700; cursor: pointer;
-  background: #f1f5f9; color: var(--text-main);
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #f1f5f9;
+  color: var(--text-main);
   transition: background .15s;
+  font-family: inherit;
 }
 .btn-auth:hover { background: #e2e8f0; }
 .btn-auth.sign-in { background: var(--primary); color: white; }
 .btn-auth.sign-in:hover { background: var(--primary-hover); }
 
 .btn-settings {
-  background: none; border: none; cursor: pointer; color: var(--text-muted);
-  display: flex; align-items: center; padding: 4px;
-  border-radius: 6px; transition: opacity .15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  padding: 7px;
+  border-radius: 8px;
+  transition: all .15s;
 }
-.btn-settings:hover { background: #f1f5f9; }
+.btn-settings:hover { background: #f1f5f9; color: var(--text-main); }
 
-/* ── Setup Modal ── */
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.55);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 500; padding: 20px;
+/* ── Content ── */
+.content {
+  flex: 1;
+  padding: 24px;
+  background: var(--bg);
 }
-.modal-overlay.hidden { display: none; }
-.modal {
-  background: white; border-radius: 16px;
-  width: 100%; max-width: 580px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.3);
-  overflow: hidden;
-}
-.modal-header { background: var(--primary); color: white; padding: 22px 28px; }
-.modal-header h2 { font-size: 18px; font-weight: 700; }
-.modal-header p  { font-size: 13px; opacity: .85; margin-top: 4px; }
-.modal-body { padding: 28px; }
-.modal-body .step {
-  display: flex; gap: 14px; margin-bottom: 22px;
-  padding-bottom: 22px; border-bottom: 1px solid var(--border);
-}
-.modal-body .step:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-.step-num {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: var(--primary); color: white;
-  font-size: 13px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 2px;
-}
-.step-content h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-.step-content p  { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-.step-content code {
-  background: #f0f2f5; padding: 2px 7px; border-radius: 5px;
-  font-family: 'Courier New', monospace; font-size: 12px; color: var(--text-main);
-}
-.step-content pre {
-  background: #1e1e2e; color: #cdd6f4;
-  padding: 10px 14px; border-radius: 8px; margin-top: 8px;
-  font-size: 13px; font-family: 'Courier New', monospace; overflow-x: auto;
-}
-.step-content a { color: var(--primary); text-decoration: none; }
-.step-content a:hover { text-decoration: underline; }
-.modal-inputs { padding: 0 28px 28px; border-top: 1px solid var(--border); }
-.modal-inputs h3 { font-size: 14px; font-weight: 700; margin: 20px 0 14px; }
-.mfg { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.mfg label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
-.mfg input { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 14px; outline: none; }
-.mfg input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
-.modal-footer { padding: 0 28px 28px; display: flex; gap: 10px; justify-content: flex-end; }
-.btn-save { background: var(--primary); color: white; }
-.btn-save:hover { background: var(--primary-hover); }
-.btn-skip { background: white; color: var(--text-muted); border: 1px solid var(--border); }
-.btn-skip:hover { background: var(--bg); }
-
-/* ── Layout ── */
-.container { max-width: 1440px; margin: 0 auto; padding: 22px; }
 
 /* ── Auth Banner ── */
 .auth-banner {
-  background: #fff8e1; border: 1px solid #ffe082;
-  border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;
-  display: flex; align-items: center; gap: 12px; font-size: 13px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
 }
 .auth-banner.hidden { display: none; }
 .auth-banner .icon { font-size: 20px; }
 .auth-banner strong { font-weight: 700; }
 .auth-banner .btn-banner {
-  margin-left: auto; padding: 7px 16px;
-  background: var(--primary); color: white;
-  border: none; border-radius: 7px;
-  font-size: 13px; font-weight: 700; cursor: pointer;
+  margin-left: auto;
+  padding: 7px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
 }
 
-/* ── Stats ── */
+/* ── Stats Grid ── */
 .stats-grid {
-  display: grid; grid-template-columns: repeat(5, 1fr);
-  gap: 14px; margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
 }
 .stat-card {
-  background: var(--card); border-radius: var(--radius);
-  border: 1px solid var(--border); box-shadow: var(--shadow);
-  padding: 16px; text-align: center;
-  transition: transform 0.2s ease;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 20px 16px;
+  text-align: center;
+  transition: transform .2s ease, box-shadow .2s ease;
 }
-.stat-card:hover { transform: translateY(-2px); }
-.stat-card .num { font-size: 28px; font-weight: 700; }
-.stat-card .lbl { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.stat-card .num  { font-size: 30px; font-weight: 700; line-height: 1; margin-bottom: 5px; }
+.stat-card .lbl  { font-size: 11.5px; color: var(--text-muted); font-weight: 500; }
 
-/* ── Add Panel ── */
-.add-panel {
-  background: var(--card); border-radius: var(--radius);
-  border: 1px solid var(--border); box-shadow: var(--shadow);
-  padding: 20px 22px; margin-bottom: 16px;
+/* ── Chart Card ── */
+.chart-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
 }
-.panel-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
-.add-grid { display: grid; grid-template-columns: 210px 1fr auto; gap: 14px; align-items: start; }
-.fg { display: flex; flex-direction: column; gap: 6px; }
-.fg label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
-input[type="text"], textarea, select {
-  border: 1px solid var(--border); border-radius: 8px;
-  padding: 10px 14px; font-size: 14px; font-family: inherit; outline: none;
-  background: #fdfdfd; transition: all 0.2s;
-}
-input[type="text"]:focus, textarea:focus, select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79,70,229,.1);
-}
-textarea { resize: vertical; min-height: 128px; font-family: 'Courier New', monospace; font-size: 12.5px; line-height: 1.5; }
-.btn-col { display: flex; flex-direction: column; gap: 8px; padding-top: 19px; }
-.btn {
-  padding: 9px 16px; border: none; border-radius: 8px;
-  font-size: 13px; font-weight: 700; cursor: pointer;
-  transition: all .15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  white-space: nowrap;
-}
-.btn-primary { background: var(--primary); color: white; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
-.btn-primary:hover { background: var(--primary-hover); }
-.btn-outline  { background: white; color: var(--text-main); border: 1px solid var(--border); }
-.btn-outline:hover  { background: var(--bg); }
-.btn-sm-danger { background: var(--danger); color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; }
-.btn-sm-danger:hover { opacity: .85; }
-
-/* ── Preview ── */
-.preview-box {
-  margin-top: 12px; padding: 12px 16px;
-  background: #f8f9ff; border: 1px solid #c7d2ff;
-  border-radius: 8px; display: none;
-}
-.preview-box h4 { font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 9px; text-transform: uppercase; letter-spacing: .4px; }
-.preview-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
-.preview-row { display: flex; gap: 7px; font-size: 13px; }
-.pq { color: var(--text-muted); min-width: 130px; }
-.pa { font-weight: 600; }
+.chart-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+.chart-wrap  { width: 180px; height: 180px; flex-shrink: 0; }
+.chart-legend { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+.legend-item  { display: flex; align-items: center; gap: 12px; }
+.legend-dot   { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.legend-label { font-size: 13px; color: var(--text-muted); }
+.legend-val   { font-size: 20px; font-weight: 700; margin-left: auto; }
+.legend-pct   { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
 
 /* ── Filters ── */
 .filters {
-  background: var(--card); border-radius: var(--radius);
-  border: 1px solid var(--border); box-shadow: var(--shadow);
-  padding: 12px 18px; margin-bottom: 14px;
-  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
 }
-.search-w { flex: 1; min-width: 180px; }
-.search-w input { width: 100%; }
-.filters select { height: 38px; min-width: 136px; }
+.filters select { height: 38px; min-width: 160px; }
+
+/* ── Shared Inputs ── */
+input[type="text"], textarea, select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  background: #fdfdfd;
+  color: var(--text-main);
+  transition: all .2s;
+}
+input[type="text"]:focus, textarea:focus, select:focus {
+  border-color: var(--primary);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+}
+textarea {
+  resize: vertical;
+  min-height: 140px;
+  font-family: 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* ── Buttons ── */
+.btn {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.btn-primary { background: var(--primary); color: white; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-outline  { background: white; color: var(--text-main); border: 1px solid var(--border); }
+.btn-outline:hover  { background: var(--bg); }
+.btn-sm-danger { background: var(--danger); color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+.btn-sm-danger:hover { opacity: .85; }
+
+/* ── Bulk Bar ── */
+.bulk-bar {
+  background: #1e293b;
+  color: white;
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.bulk-bar .bulk-count { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.bulk-bar select {
+  height: 34px;
+  border-radius: 7px;
+  border: none;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(255,255,255,.12);
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+}
+.bulk-bar select option { background: #1e293b; }
+.bulk-apply {
+  padding: 7px 16px;
+  border-radius: 7px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+  font-family: inherit;
+}
+.bulk-apply:hover { background: var(--primary-hover); }
+.bulk-clear {
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: none;
+  background: rgba(255,255,255,.12);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+  transition: background .15s;
+  font-family: inherit;
+}
+.bulk-clear:hover { background: rgba(255,255,255,.22); }
+input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary); }
 
 /* ── Table ── */
 .table-wrap {
-  background: var(--card); border-radius: var(--radius);
-  border: 1px solid var(--border); box-shadow: var(--shadow);
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 .table-header {
-  padding: 13px 20px; display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   border-bottom: 1px solid var(--border);
 }
 .table-header h2 { font-size: 14px; font-weight: 700; }
 .scroll-x { overflow-x: auto; }
 table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
 th {
-  background: #f1f5f9; padding: 12px 16px;
-  text-align: left; font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted);
-  border-bottom: 1px solid var(--border); white-space: nowrap;
+  background: #f1f5f9;
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 10;
 }
-td { padding: 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+td { padding: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: #f8fafc; }
+
 .badge {
-  display: inline-block; padding: 4px 10px; border-radius: 6px;
-  font-size: 11px; font-weight: 700; text-transform: uppercase; white-space: nowrap;
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 .bg-green  { background: var(--green-bg);  color: var(--green); }
 .bg-yellow { background: var(--yellow-bg); color: var(--yellow); }
@@ -258,111 +501,238 @@ tr:hover td { background: #f8fafc; }
 .bg-blue   { background: #e8f0fe;          color: #1967d2; }
 .bg-purple { background: var(--purple-bg); color: var(--purple); }
 .bg-gray   { background: var(--gray-bg);   color: var(--gray); }
-.status-sel { border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: white; min-width: 118px; }
-.notes-inp  { border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; font-size: 12px; width: 165px; }
+
+.status-sel {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: white;
+  min-width: 140px;
+  font-family: inherit;
+}
+.notes-inp {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
+  width: 165px;
+  font-family: inherit;
+}
 .notes-inp:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
 .empty { text-align: center; padding: 56px 20px; color: var(--text-muted); }
 .empty .icon { font-size: 42px; margin-bottom: 10px; }
 .empty p { font-size: 14px; }
+
+/* ── Modal Base ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 580px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  overflow: hidden;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-header {
+  background: var(--primary);
+  color: white;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+.modal-header-text h2 { font-size: 17px; font-weight: 700; }
+.modal-header-text p  { font-size: 13px; opacity: .8; margin-top: 3px; }
+.modal-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+  opacity: .7;
+  padding: 0 0 0 16px;
+  flex-shrink: 0;
+}
+.modal-close:hover { opacity: 1; }
+
+.modal-body { padding: 24px 28px; }
+.modal-body .step {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-body .step:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.step-content h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.step-content p  { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.step-content code {
+  background: #f1f5f9;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--text-main);
+}
+.step-content pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  overflow-x: auto;
+}
+.step-content a { color: var(--primary); text-decoration: none; }
+.step-content a:hover { text-decoration: underline; }
+
+.modal-inputs { padding: 0 28px 24px; border-top: 1px solid var(--border); }
+.modal-inputs h3 { font-size: 14px; font-weight: 700; margin: 20px 0 14px; }
+.mfg { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.mfg label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.mfg input { width: 100%; }
+.modal-footer { padding: 0 28px 24px; display: flex; gap: 10px; justify-content: flex-end; }
+.btn-save { background: var(--primary); color: white; }
+.btn-save:hover { background: var(--primary-hover); }
+.btn-skip { background: white; color: var(--text-muted); border: 1px solid var(--border); }
+.btn-skip:hover { background: var(--bg); }
+
+/* ── Add Member Modal (wider) ── */
+#addMemberModal .modal { max-width: 740px; }
+.add-grid { display: grid; grid-template-columns: 200px 1fr auto; gap: 16px; align-items: start; }
+.fg { display: flex; flex-direction: column; gap: 6px; }
+.fg label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.btn-col { display: flex; flex-direction: column; gap: 8px; padding-top: 22px; }
+
+.preview-box {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f8f9ff;
+  border: 1px solid #c7d2ff;
+  border-radius: 8px;
+  display: none;
+}
+.preview-box h4 { font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 9px; text-transform: uppercase; letter-spacing: .05em; }
+.preview-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+.preview-row  { display: flex; gap: 7px; font-size: 13px; }
+.pq { color: var(--text-muted); min-width: 130px; }
+.pa { font-weight: 600; }
+
+/* ── Toast ── */
 .toast {
-  position: fixed; bottom: 22px; right: 22px;
-  padding: 11px 18px; border-radius: 8px; font-size: 13px; font-weight: 500;
-  color: white; box-shadow: 0 4px 14px rgba(0,0,0,.25);
-  transform: translateY(80px); opacity: 0; transition: all .3s ease; z-index: 999;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all .3s ease;
+  z-index: 999;
 }
 .toast.show { transform: translateY(0); opacity: 1; }
 
-@media (max-width: 900px) {
-  .add-grid { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: repeat(3, 1fr); }
-  .btn-col { flex-direction: row; padding-top: 0; }
-}
-@media (max-width: 600px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-/* ── Bulk Bar ── */
-.bulk-bar {
-  background: #1e293b; color: white;
-  border-radius: var(--radius); padding: 12px 18px; margin-bottom: 14px;
-  align-items: center; gap: 12px; flex-wrap: wrap;
-}
-.bulk-bar .bulk-count { font-size: 14px; font-weight: 700; white-space: nowrap; }
-.bulk-bar select {
-  height: 34px; border-radius: 7px; border: none;
-  padding: 0 10px; font-size: 13px; font-weight: 600;
-  background: rgba(255,255,255,.15); color: white; cursor: pointer;
-}
-.bulk-bar select option { background: #1e293b; }
-.bulk-apply {
-  padding: 7px 16px; border-radius: 7px; border: none;
-  background: var(--primary); color: white;
-  font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s;
-}
-.bulk-apply:hover { background: var(--primary-hover); }
-.bulk-clear {
-  padding: 7px 14px; border-radius: 7px; border: none;
-  background: rgba(255,255,255,.12); color: white;
-  font-size: 13px; font-weight: 600; cursor: pointer;
-  margin-left: auto; transition: background .15s;
-}
-.bulk-clear:hover { background: rgba(255,255,255,.22); }
-input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary); }
-
-/* ── ISL Chart ── */
-.chart-card {
-  background: var(--card); border-radius: var(--radius);
-  border: 1px solid var(--border); box-shadow: var(--shadow);
-  padding: 20px 24px; margin-bottom: 18px;
-  display: flex; align-items: center; gap: 32px;
-  transition: transform 0.2s ease;
-}
-.chart-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
-.chart-wrap  { width: 180px; height: 180px; flex-shrink: 0; }
-.chart-legend { display: flex; flex-direction: column; gap: 14px; flex: 1; }
-.legend-item { display: flex; align-items: center; gap: 12px; }
-.legend-dot  { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
-.legend-label { font-size: 13px; color: var(--text-muted); }
-.legend-val   { font-size: 20px; font-weight: 700; margin-left: auto; }
-.legend-pct   { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
-@media (max-width: 600px) {
-  .chart-card { flex-direction: column; align-items: flex-start; }
-  .chart-wrap { width: 160px; height: 160px; }
-}
-
 /* ── Sign-in Gate ── */
 .signin-gate {
-  position: fixed; inset: 0;
-  background: linear-gradient(145deg, var(--primary-hover) 0%, var(--primary) 60%, #818cf8 100%);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   z-index: 1000;
 }
 .signin-gate.hidden { display: none; }
 .signin-card {
-  background: white; border-radius: 20px;
-  padding: 48px 40px; text-align: center;
-  max-width: 400px; width: 90%;
-  box-shadow: 0 24px 64px rgba(0,0,0,.3);
+  background: white;
+  border-radius: 20px;
+  padding: 48px 40px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 24px 64px rgba(0,0,0,.4);
 }
-.signin-logo { margin-bottom: 18px; }
+.signin-logo { margin-bottom: 20px; }
 .signin-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .signin-card .subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; line-height: 1.5; }
 .btn-google {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  width: 100%; padding: 13px 20px;
-  border: 1px solid var(--border); border-radius: 10px;
-  background: white; cursor: pointer;
-  font-size: 15px; font-weight: 600; color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
   transition: background .15s, box-shadow .15s;
+  font-family: inherit;
 }
-.btn-google:hover { background: #f5f8ff; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
-.signin-footer { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,.65); }
+.btn-google:hover { background: #f5f8ff; box-shadow: 0 2px 12px rgba(79,70,229,.15); }
+.signin-footer { margin-top: 24px; font-size: 12px; color: rgba(255,255,255,.45); }
 
 /* ── Scrollbars ── */
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .stats-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); }
+  .main-area { margin-left: 0; }
+  .add-grid { grid-template-columns: 1fr; }
+  .btn-col { flex-direction: row; padding-top: 0; }
+  .chart-card { flex-direction: column; align-items: flex-start; }
+  .chart-wrap { width: 160px; height: 160px; }
+}
+@media (max-width: 640px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 </head>
 <body>
@@ -371,8 +741,8 @@ input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-colo
 <div class="signin-gate" id="signinGate">
   <div class="signin-card">
     <div class="signin-logo">
-      <svg width="52" height="52" viewBox="0 0 36 36" fill="var(--blue)">
-        <path d="M18 3C9.716 3 3 9.716 3 18c0 7.31 5.155 13.418 12.046 14.818V22.535h-3.48v-4.07h3.48v-2.746c0-4.09 2.087-5.952 5.514-5.952 1.644 0 2.518.122 2.928.177v3.226h-2.346c-1.45 0-1.957.694-1.957 2.235v3.06h4.268l-.577 4.07h-3.691v10.337C27.718 31.564 33 25.4 33 18c0-8.284-6.716-15-15-15z"/>
+      <svg width="52" height="52" viewBox="0 0 36 36">
+        <path fill="#4f46e5" d="M18 3C9.716 3 3 9.716 3 18c0 7.31 5.155 13.418 12.046 14.818V22.535h-3.48v-4.07h3.48v-2.746c0-4.09 2.087-5.952 5.514-5.952 1.644 0 2.518.122 2.928.177v3.226h-2.346c-1.45 0-1.957.694-1.957 2.235v3.06h4.268l-.577 4.07h-3.691v10.337C27.718 31.564 33 25.4 33 18c0-8.284-6.716-15-15-15z"/>
       </svg>
     </div>
     <h2>Insurance Sales Lab</h2>
@@ -390,42 +760,188 @@ input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-colo
   <p class="signin-footer">Access restricted to authorized team members only</p>
 </div>
 
-<!-- ── Header ── -->
-<div class="header">
-  <div class="header-left">
-    <svg width="28" height="28" viewBox="0 0 36 36" fill="white">
-      <path d="M18 3C9.716 3 3 9.716 3 18c0 7.31 5.155 13.418 12.046 14.818V22.535h-3.48v-4.07h3.48v-2.746c0-4.09 2.087-5.952 5.514-5.952 1.644 0 2.518.122 2.928.177v3.226h-2.346c-1.45 0-1.957.694-1.957 2.235v3.06h4.268l-.577 4.07h-3.691v10.337C27.718 31.564 33 25.4 33 18c0-8.284-6.716-15-15-15z"/>
-    </svg>
-    <div class="header-title">
-      <h1>Insurance Sales Lab</h1>
-      <p>Facebook Group Member Tracker</p>
-    </div>
-  </div>
-  <div class="header-right">
-    <div class="sync-pill" id="syncPill">
-      <div class="sync-dot offline" id="syncDot"></div>
-      <span id="syncLabel">Not connected</span>
-    </div>
-    <button class="btn-auth sign-in" id="btnSignIn" onclick="signIn()" style="display:none">
-      Sign in with Google
-    </button>
-    <button class="btn-auth" id="btnSignOut" onclick="signOut()" style="display:none">
-      Sign Out
-    </button>
-    <button class="btn-settings" onclick="openSettings()" title="Settings">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.08 7.08 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54a7.47 7.47 0 0 0-1.61.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.08.63-.08.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.36 1.04.67 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7.47 7.47 0 0 0 1.61-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/>
-      </svg>
-    </button>
-  </div>
-</div>
+<!-- ── App Shell ── -->
+<div class="app-shell">
 
-<!-- ── Setup / Settings Modal ── -->
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="34" height="34" viewBox="0 0 36 36">
+        <path fill="white" d="M18 3C9.716 3 3 9.716 3 18c0 7.31 5.155 13.418 12.046 14.818V22.535h-3.48v-4.07h3.48v-2.746c0-4.09 2.087-5.952 5.514-5.952 1.644 0 2.518.122 2.928.177v3.226h-2.346c-1.45 0-1.957.694-1.957 2.235v3.06h4.268l-.577 4.07h-3.691v10.337C27.718 31.564 33 25.4 33 18c0-8.284-6.716-15-15-15z"/>
+      </svg>
+      <div>
+        <div class="sidebar-logo-name">ISL Tracker</div>
+        <div class="sidebar-logo-sub">Insurance Sales Lab</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <button class="nav-item active">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
+        Tracker
+      </button>
+      <button class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+        </svg>
+        Analytics
+      </button>
+      <button class="nav-item" onclick="openSettings()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.08 7.08 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54a7.47 7.47 0 0 0-1.61.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.08.63-.08.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.36 1.04.67 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7.47 7.47 0 0 0 1.61-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/>
+        </svg>
+        Settings
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="btn-add-member" onclick="openAddModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        Add Member
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Area -->
+  <div class="main-area">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-search">
+        <span class="search-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+        </span>
+        <input type="text" id="searchInput" placeholder="Search members by name or email…" oninput="renderTable()" />
+      </div>
+      <div class="topbar-right">
+        <div class="sync-pill" id="syncPill">
+          <div class="sync-dot offline" id="syncDot"></div>
+          <span id="syncLabel">Not connected</span>
+        </div>
+        <button class="btn-auth sign-in" id="btnSignIn" onclick="signIn()" style="display:none">Sign in with Google</button>
+        <button class="btn-auth" id="btnSignOut" onclick="signOut()" style="display:none">Sign Out</button>
+        <button class="btn-settings" onclick="openSettings()" title="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.08 7.08 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54a7.47 7.47 0 0 0-1.61.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.08.63-.08.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.36 1.04.67 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7.47 7.47 0 0 0 1.61-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content">
+
+      <!-- Auth Banner -->
+      <div class="auth-banner hidden" id="authBanner">
+        <span class="icon">🔗</span>
+        <div>
+          <strong>Not signed in to Google.</strong>
+          Data is saved locally only. Sign in to sync with Google Sheets.
+        </div>
+        <button class="btn-banner" onclick="signIn()">Sign in with Google</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="statsGrid"></div>
+
+      <!-- ISL Membership Chart -->
+      <div class="chart-card" id="chartCard" style="display:none">
+        <div>
+          <div class="chart-title">ISL Membership Breakdown</div>
+          <div class="chart-wrap"><canvas id="islChart"></canvas></div>
+        </div>
+        <div class="chart-legend" id="chartLegend"></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters">
+        <select id="fStatus" onchange="renderTable()">
+          <option value="">All Statuses</option>
+          <option>Added to automation</option>
+          <option>Not added to automation</option>
+        </select>
+        <select id="fISL" onchange="renderTable()">
+          <option value="">ISL Member: All</option>
+          <option value="yes">ISL Member: Yes</option>
+          <option value="interested">Interested in ISL</option>
+          <option value="no">Not a Member</option>
+        </select>
+        <select id="fContrib" onchange="renderTable()">
+          <option value="">Contribute: All</option>
+          <option value="yes">Will Contribute</option>
+          <option value="no">Will Not Contribute</option>
+        </select>
+        <select id="fSort" onchange="renderTable()">
+          <option value="newest">Newest → Oldest</option>
+          <option value="oldest">Oldest → Newest</option>
+        </select>
+        <button class="btn btn-outline" onclick="refreshFromSheet()" id="btnRefresh" title="Reload from Google Sheets">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          Refresh
+        </button>
+        <button class="btn btn-outline" onclick="exportCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          Export CSV
+        </button>
+      </div>
+
+      <!-- Bulk Action Bar -->
+      <div class="bulk-bar" id="bulkBar" style="display:none">
+        <span class="bulk-count" id="bulkCount">0 selected</span>
+        <select id="bulkStatus">
+          <option value="">Set status…</option>
+          <option>Added to automation</option>
+          <option>Not added to automation</option>
+        </select>
+        <button class="bulk-apply" onclick="applyBulkStatus()">Apply to Selected</button>
+        <button class="bulk-clear" onclick="clearSelection()">✕ Deselect All</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <div class="table-header">
+          <h2>Members &mdash; <span id="memberCount">0</span> shown <span id="totalCount" style="font-size:12px;color:var(--muted);font-weight:400"></span></h2>
+        </div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)" title="Select all"></th>
+                <th>#</th><th>Name</th><th>Date</th>
+                <th>ISL Member?</th><th>Work Email</th>
+                <th>Will Contribute?</th><th>Agreed to Rules?</th>
+                <th>Status</th><th>Notes</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+          <div class="empty" id="emptyState" style="display:none">
+            <div class="icon">👥</div>
+            <p>No members yet. Click <strong>Add Member</strong> in the sidebar to get started.</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- end .main-area -->
+</div><!-- end .app-shell -->
+
+<div class="toast" id="toast"></div>
+
+<!-- ── Settings Modal ── -->
 <div class="modal-overlay hidden" id="modalOverlay">
   <div class="modal">
     <div class="modal-header">
-      <h2 id="modalTitle">Connect to Google Sheets</h2>
-      <p id="modalSubtitle">One-time setup — takes about 5 minutes</p>
+      <div class="modal-header-text">
+        <h2 id="modalTitle">Connect to Google Sheets</h2>
+        <p id="modalSubtitle">One-time setup — takes about 5 minutes</p>
+      </div>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
       <div class="step">
@@ -483,47 +999,28 @@ input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-colo
   </div>
 </div>
 
-<div class="container">
-
-  <!-- Auth Banner -->
-  <div class="auth-banner hidden" id="authBanner">
-    <span class="icon">🔗</span>
-    <div>
-      <strong>Not signed in to Google.</strong>
-      Data is saved locally only. Sign in to sync with Google Sheets.
-    </div>
-    <button class="btn-banner" onclick="signIn()">Sign in with Google</button>
-  </div>
-
-  <!-- Stats -->
-  <div class="stats-grid" id="statsGrid"></div>
-
-  <!-- ISL Membership Chart -->
-  <div class="chart-card" id="chartCard" style="display:none">
-    <div>
-      <div class="chart-title">ISL Membership Breakdown</div>
-      <div class="chart-wrap"><canvas id="islChart"></canvas></div>
-    </div>
-    <div class="chart-legend" id="chartLegend"></div>
-  </div>
-
-  <!-- Add Panel -->
-  <div class="add-panel">
-    <div class="panel-title">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="var(--blue)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-      Add New Member
-    </div>
-    <div class="add-grid">
-      <div class="fg">
-        <label>Member Name *</label>
-        <input type="text" id="memberName" placeholder="e.g. Robert Pico" />
-        <label style="margin-top:10px">Date Joined</label>
-        <input type="text" id="memberDate" placeholder="Defaults to today" />
+<!-- ── Add Member Modal ── -->
+<div class="modal-overlay hidden" id="addMemberModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h2>Add New Member</h2>
+        <p>Paste the Facebook Q&amp;A answers to parse and add</p>
       </div>
-      <div class="fg">
-        <label>Paste Facebook Q&amp;A Answers *</label>
-        <textarea id="pasteArea"
-          placeholder="Paste the member's answers from Facebook:
+      <button class="modal-close" onclick="closeAddModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="add-grid">
+        <div class="fg">
+          <label>Member Name *</label>
+          <input type="text" id="memberName" placeholder="e.g. Robert Pico" />
+          <label style="margin-top:10px">Date Joined</label>
+          <input type="text" id="memberDate" placeholder="Defaults to today" />
+        </div>
+        <div class="fg">
+          <label>Paste Facebook Q&amp;A Answers *</label>
+          <textarea id="pasteArea"
+            placeholder="Paste the member's answers from Facebook:
 
 * Are you a member of Insurance Sales Lab?
 No, but I am interested
@@ -533,95 +1030,22 @@ email@example.com
 Yes
 Do you agree to the group rules from the admin?
 I agree" oninput="livePreview()"></textarea>
+        </div>
+        <div class="btn-col">
+          <button class="btn btn-primary" onclick="addMember()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Parse &amp; Add
+          </button>
+          <button class="btn btn-outline" onclick="clearForm()">Clear</button>
+        </div>
       </div>
-      <div class="btn-col">
-        <button class="btn btn-primary" onclick="addMember()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-          Parse &amp; Add
-        </button>
-        <button class="btn btn-outline" onclick="clearForm()">Clear</button>
-      </div>
-    </div>
-    <div class="preview-box" id="previewBox">
-      <h4>Parsed Preview</h4>
-      <div class="preview-grid" id="previewGrid"></div>
-    </div>
-  </div>
-
-  <!-- Filters -->
-  <div class="filters">
-    <div class="search-w">
-      <input type="text" id="searchInput" placeholder="Search by name or email…" oninput="renderTable()" />
-    </div>
-    <select id="fStatus" onchange="renderTable()">
-      <option value="">All Statuses</option>
-      <option>Added to automation</option>
-      <option>Not added to automation</option>
-    </select>
-    <select id="fISL" onchange="renderTable()">
-      <option value="">ISL Member: All</option>
-      <option value="yes">ISL Member: Yes</option>
-      <option value="interested">Interested in ISL</option>
-      <option value="no">Not a Member</option>
-    </select>
-    <select id="fContrib" onchange="renderTable()">
-      <option value="">Contribute: All</option>
-      <option value="yes">Will Contribute</option>
-      <option value="no">Will Not Contribute</option>
-    </select>
-    <select id="fSort" onchange="renderTable()">
-      <option value="newest">Newest → Oldest</option>
-      <option value="oldest">Oldest → Newest</option>
-    </select>
-    <button class="btn btn-outline" onclick="refreshFromSheet()" id="btnRefresh" title="Reload from Google Sheets">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-      Refresh
-    </button>
-    <button class="btn btn-outline" onclick="exportCSV()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-      Export CSV
-    </button>
-  </div>
-
-  <!-- Bulk Action Bar -->
-  <div class="bulk-bar" id="bulkBar" style="display:none">
-    <span class="bulk-count" id="bulkCount">0 selected</span>
-    <select id="bulkStatus">
-      <option value="">Set status…</option>
-      <option>Added to automation</option>
-      <option>Not added to automation</option>
-    </select>
-    <button class="bulk-apply" onclick="applyBulkStatus()">Apply to Selected</button>
-    <button class="bulk-clear" onclick="clearSelection()">✕ Deselect All</button>
-  </div>
-
-  <!-- Table -->
-  <div class="table-wrap">
-    <div class="table-header">
-      <h2>Members &mdash; <span id="memberCount">0</span> shown <span id="totalCount" style="font-size:12px;color:var(--muted);font-weight:400"></span></h2>
-    </div>
-    <div class="scroll-x">
-      <table>
-        <thead>
-          <tr>
-            <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)" title="Select all"></th>
-            <th>#</th><th>Name</th><th>Date</th>
-            <th>ISL Member?</th><th>Work Email</th>
-            <th>Will Contribute?</th><th>Agreed to Rules?</th>
-            <th>Status</th><th>Notes</th><th></th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-      <div class="empty" id="emptyState" style="display:none">
-        <div class="icon">👥</div>
-        <p>No members yet. Paste a member's answers above to get started.</p>
+      <div class="preview-box" id="previewBox">
+        <h4>Parsed Preview</h4>
+        <div class="preview-grid" id="previewGrid"></div>
       </div>
     </div>
   </div>
 </div>
-
-<div class="toast" id="toast"></div>
 
 <script>
 // ── Config & State ────────────────────────────────────────────────────
@@ -651,6 +1075,15 @@ let accessToken = null;
 let tokenClient = null;
 let gisLoaded   = false;
 let selectedIds = new Set();
+
+// ── Add Member Modal ───────────────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('addMemberModal').classList.remove('hidden');
+}
+function closeAddModal() {
+  document.getElementById('addMemberModal').classList.add('hidden');
+  clearForm();
+}
 
 // ── Bulk Selection ────────────────────────────────────────────────────
 function toggleSelect(id, checked) {
@@ -969,7 +1402,7 @@ async function addMember() {
     // Offline — local only
     members.unshift(member);
     localStorage.setItem('isl_tracker', JSON.stringify(members));
-    renderAll(); clearForm();
+    renderAll(); closeAddModal();
     showToast(`✓ ${name} added (offline — sign in to sync)`);
     return;
   }
@@ -983,7 +1416,7 @@ async function addMember() {
     members.unshift(member);
     localStorage.setItem('isl_tracker', JSON.stringify(members));
     setSyncStatus('idle');
-    renderAll(); clearForm();
+    renderAll(); closeAddModal();
     showToast(`✓ ${name} added to Google Sheets`);
   } catch (e) {
     setSyncStatus('error');
