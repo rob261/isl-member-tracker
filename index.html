@@ -267,6 +267,36 @@ tr:hover td { background: #fafbff; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ── Bulk Bar ── */
+.bulk-bar {
+  background: #1c1e21; color: white;
+  border-radius: 10px; padding: 12px 18px;
+  margin-bottom: 14px;
+  align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.bulk-bar .bulk-count { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.bulk-bar select {
+  height: 34px; border-radius: 7px; border: none;
+  padding: 0 10px; font-size: 13px; font-weight: 600;
+  background: rgba(255,255,255,.15); color: white; cursor: pointer;
+}
+.bulk-bar select option { background: #1c1e21; }
+.bulk-apply {
+  padding: 7px 16px; border-radius: 7px; border: none;
+  background: var(--blue); color: white;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: background .15s;
+}
+.bulk-apply:hover { background: var(--blue-dk); }
+.bulk-clear {
+  padding: 7px 14px; border-radius: 7px; border: none;
+  background: rgba(255,255,255,.12); color: white;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  margin-left: auto; transition: background .15s;
+}
+.bulk-clear:hover { background: rgba(255,255,255,.22); }
+input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--blue); }
+
 /* ── ISL Chart ── */
 .chart-card {
   background: white; border-radius: 12px;
@@ -507,8 +537,8 @@ I agree" oninput="livePreview()"></textarea>
     </div>
     <select id="fStatus" onchange="renderTable()">
       <option value="">All Statuses</option>
-      <option>New Lead</option><option>Contacted</option><option>Qualified</option>
-      <option>Not Interested</option><option>Approved</option><option>Denied</option>
+      <option>Added to automation</option>
+      <option>Not added to automation</option>
     </select>
     <select id="fISL" onchange="renderTable()">
       <option value="">ISL Member: All</option>
@@ -535,6 +565,18 @@ I agree" oninput="livePreview()"></textarea>
     </button>
   </div>
 
+  <!-- Bulk Action Bar -->
+  <div class="bulk-bar" id="bulkBar" style="display:none">
+    <span class="bulk-count" id="bulkCount">0 selected</span>
+    <select id="bulkStatus">
+      <option value="">Set status…</option>
+      <option>Added to automation</option>
+      <option>Not added to automation</option>
+    </select>
+    <button class="bulk-apply" onclick="applyBulkStatus()">Apply to Selected</button>
+    <button class="bulk-clear" onclick="clearSelection()">✕ Deselect All</button>
+  </div>
+
   <!-- Table -->
   <div class="table-wrap">
     <div class="table-header">
@@ -544,6 +586,7 @@ I agree" oninput="livePreview()"></textarea>
       <table>
         <thead>
           <tr>
+            <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)" title="Select all"></th>
             <th>#</th><th>Name</th><th>Date</th>
             <th>ISL Member?</th><th>Work Email</th>
             <th>Will Contribute?</th><th>Agreed to Rules?</th>
@@ -570,8 +613,8 @@ const HEADERS        = ['ID','Name','Date','ISL Member?','Work Email','Will Cont
 const ARCHIVE_TAB    = 'Sheet2';
 const ARCHIVE_RANGE  = `${ARCHIVE_TAB}!A:J`;
 const ARCHIVE_HEADERS = [...HEADERS, 'Archived Date'];
-const STATUSES    = ['New Lead','Contacted','Qualified','Not Interested','Approved','Denied'];
-const STATUS_CLS  = { 'New Lead':'bg-blue','Contacted':'bg-yellow','Qualified':'bg-green','Not Interested':'bg-gray','Approved':'bg-purple','Denied':'bg-red' };
+const STATUSES    = ['Added to automation','Not added to automation'];
+const STATUS_CLS  = { 'Added to automation':'bg-green','Not added to automation':'bg-gray' };
 const QUESTIONS   = [
   { key:'islMember',      match:'member of insurance sales lab' },
   { key:'email',          match:'work email' },
@@ -583,12 +626,63 @@ const DEFAULT_SETTINGS = {
   clientId: '1038199509852-let2a3mhpl464lqs4use2dij9v39qt6t.apps.googleusercontent.com',
   sheetId:  '1D4RmX_Ph2-aNmzkrKwmuKluH4KmSifCq7x5FH-Xp0g8',
 };
-let settings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('isl_settings') || '{}') };
+let settings    = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('isl_settings') || '{}') };
 let members     = JSON.parse(localStorage.getItem('isl_tracker')  || '[]');
 let rowMap      = {}; // memberId → 1-based sheet row number
 let accessToken = null;
 let tokenClient = null;
 let gisLoaded   = false;
+let selectedIds = new Set();
+
+// ── Bulk Selection ────────────────────────────────────────────────────
+function toggleSelect(id, checked) {
+  if (checked) selectedIds.add(id); else selectedIds.delete(id);
+  updateBulkBar();
+}
+
+function toggleSelectAll(checked) {
+  getFiltered().forEach(m => checked ? selectedIds.add(m.id) : selectedIds.delete(m.id));
+  renderTable();
+  updateBulkBar();
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  const sa = document.getElementById('selectAll');
+  if (sa) sa.checked = false;
+  renderTable();
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  const n   = selectedIds.size;
+  document.getElementById('bulkCount').textContent = `${n} member${n !== 1 ? 's' : ''} selected`;
+  bar.style.display = n > 0 ? 'flex' : 'none';
+}
+
+async function applyBulkStatus() {
+  const val = document.getElementById('bulkStatus').value;
+  if (!val) { showToast('Choose a status first', 'err'); return; }
+  const ids = [...selectedIds];
+  ids.forEach(id => { const m = members.find(x => x.id === id); if (m) m.status = val; });
+  localStorage.setItem('isl_tracker', JSON.stringify(members));
+  const count = ids.length;
+  selectedIds.clear();
+  updateBulkBar();
+  renderAll();
+  if (accessToken) {
+    setSyncStatus('syncing');
+    try {
+      await Promise.all(ids.map(id => {
+        const m = members.find(x => x.id === id);
+        return (m && rowMap[id]) ? apiUpdate(rowMap[id], memberToRow(m)) : null;
+      }).filter(Boolean));
+      setSyncStatus('idle');
+    } catch(e) { setSyncStatus('error'); showToast('Bulk sync error: ' + e.message, 'err'); return; }
+  }
+  showToast(`✓ ${count} member${count !== 1 ? 's' : ''} updated to "${val}"`);
+}
 
 // ── GIS ───────────────────────────────────────────────────────────────
 function onGISLoad() {
@@ -849,7 +943,7 @@ async function addMember() {
     showToast('Could not parse any answers — check the pasted format', 'err'); return;
   }
 
-  const member = { id: Date.now(), name, date, status: 'New Lead', notes: '',
+  const member = { id: Date.now(), name, date, status: 'Not added to automation', notes: '',
     islMember: parsed.islMember||'', email: parsed.email||'',
     willContribute: parsed.willContribute||'', agreedRules: parsed.agreedRules||'' };
 
@@ -985,6 +1079,7 @@ function renderTable() {
   empty.style.display = 'none';
   tbody.innerHTML = list.map((m,i) => `
     <tr>
+      <td><input type="checkbox" ${selectedIds.has(m.id) ? 'checked' : ''} onchange="toggleSelect(${m.id}, this.checked)"></td>
       <td style="color:var(--muted);font-weight:600;font-size:11px">${i+1}</td>
       <td><strong>${esc(m.name)}</strong></td>
       <td style="white-space:nowrap;color:var(--muted);font-size:12px">${esc(m.date)}</td>
@@ -1006,10 +1101,10 @@ function updateStats() {
   const td = todayStr();
   document.getElementById('statsGrid').innerHTML = [
     { n: members.length,                                                                lbl:'Total Members',  c:'var(--blue)' },
-    { n: members.filter(m=>m.date===td).length,                                        lbl:'Added Today',    c:'var(--green)' },
-    { n: members.filter(m=>m.status==='Contacted').length,                             lbl:'Contacted',      c:'var(--yellow)' },
-    { n: members.filter(m=>m.status==='Qualified').length,                             lbl:'Qualified',      c:'var(--green)' },
-    { n: members.filter(m=>(m.islMember||'').toLowerCase().includes('yes')).length,    lbl:'ISL Members',    c:'var(--purple)' },
+    { n: members.filter(m=>m.date===td).length,                                               lbl:'Added Today',           c:'var(--green)' },
+    { n: members.filter(m=>m.status==='Added to automation').length,                          lbl:'Added to Automation',   c:'var(--green)' },
+    { n: members.filter(m=>m.status==='Not added to automation').length,                      lbl:'Not in Automation',     c:'var(--yellow)' },
+    { n: members.filter(m=>(m.islMember||'').toLowerCase().includes('yes')).length,           lbl:'ISL Members',           c:'var(--purple)' },
   ].map(s=>`<div class="stat-card"><div class="num" style="color:${s.c}">${s.n}</div><div class="lbl">${s.lbl}</div></div>`).join('');
 }
 
